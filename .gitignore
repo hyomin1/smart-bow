@@ -1,0 +1,7 @@
+# fast api
+venv/
+__pycache__
+
+# express
+node_modules/
+mediasoup-gateway
