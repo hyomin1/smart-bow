@@ -5,3 +5,6 @@ __pycache__
 # express
 node_modules/
 mediasoup-gateway
+
+
+.env

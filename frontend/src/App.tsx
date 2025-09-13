@@ -1,24 +1,15 @@
-import { useEffect, useRef } from 'react';
-import mpegts from 'mpegts.js';
+import LiveStreamerViewer from './components/LiveStreamerViewer';
+import TargetOverlayView from './components/TargetOverlayView';
 
-export default function Player() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (videoRef.current && mpegts.getFeatureList().mseLivePlayback) {
-      const player = mpegts.createPlayer({
-        type: 'mpegts',
-        isLive: true,
-        url: 'http://localhost:8000/stream.ts',
-      });
-      player.attachMediaElement(videoRef.current);
-      player.load();
-      player.play();
-      return () => player.destroy();
-    }
-  }, []);
-
+export default function App() {
   return (
-    <video ref={videoRef} width={640} height={360} controls muted autoPlay />
+    <div className='flex h-screen'>
+      <div className='w-1/2 h-full'>
+        <LiveStreamerViewer />
+      </div>
+      <div className='w-1/2 h-full'>
+        <TargetOverlayView />
+      </div>
+    </div>
   );
 }
