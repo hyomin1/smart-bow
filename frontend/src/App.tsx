@@ -1,4 +1,4 @@
-import LiveStreamerViewer from './components/LiveStreamerViewer';
+import LiveStreamerViewer from './components/CamHlsPlayer';
 import TargetOverlayView from './components/TargetOverlayView';
 
 export default function App() {
