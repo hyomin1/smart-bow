@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import target
+from app.routers import target, arrow
 
 app = FastAPI(
     title="Smart Archery",
@@ -17,7 +17,8 @@ app.add_middleware(
 )
 
 app.include_router(target.router, prefix="/target", tags=["target"])
-#app.include_router(ws.router, tags=["websocket"])  
+app.include_router(arrow.router, tags=["arrow"])
+ 
 
 @app.get("/")
 async def root():
