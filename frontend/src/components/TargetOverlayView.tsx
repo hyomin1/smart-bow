@@ -55,13 +55,24 @@ export default function TargetOverlayView() {
     const ws = new WebSocket(
       `ws://localhost:8000/ws/arrow?tw=${targetW}&th=${targetH}`
     );
-
+    ws.onopen = () => console.log('ws open');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'hit' && data.corrected_hit) {
+        console.log('적중', data);
         const [x, y] = data.corrected_hit;
         setHits((prev) => [...prev, { x, y }]);
       }
+    };
+    ws.onclose = (event) => {
+      console.warn(
+        `WebSocket 닫힘 (code=${event.code}, reason=${event.reason})`
+      );
+      // 여기서 재연결
+    };
+
+    ws.onerror = (err) => {
+      console.error('WebSocket 에러', err);
     };
     return () => ws.close();
   }, [corners, targetW, targetH]);
@@ -145,16 +156,30 @@ export default function TargetOverlayView() {
             })
           )}
           {/* 화살 적중 지점 */}
+          {/* 화살 적중 지점 */}
           {hits.map((hit, idx) => (
-            <circle
-              key={idx}
-              cx={hit.x}
-              cy={hit.y}
-              r={6}
-              fill='red'
-              stroke='white'
-              strokeWidth={2}
-            />
+            <g key={idx}>
+              {/* 바깥 원: 오차 범위 */}
+              <circle
+                cx={hit.x}
+                cy={hit.y}
+                r={15}
+                fill='rgba(0,255,255,0.15)' // 반투명 청록
+                stroke='#0ff'
+                strokeWidth={1.5}
+                style={{ filter: 'drop-shadow(0 0 4px #0ff)' }}
+              />
+              {/* 안쪽 원: 실제 명중점 */}
+              <circle
+                cx={hit.x}
+                cy={hit.y}
+                r={6}
+                fill='orange'
+                stroke='white'
+                strokeWidth={2}
+                style={{ filter: 'drop-shadow(0 0 4px orange)' }}
+              />
+            </g>
           ))}
         </svg>
       ) : (

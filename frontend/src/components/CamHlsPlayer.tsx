@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import Hls from 'hls.js';
-const CAM = 'cam3';
+const CAM = 'cam2';
 export default function CamHlsPlayer() {
   const videoRef = useRef<HTMLVideoElement>(null);
 

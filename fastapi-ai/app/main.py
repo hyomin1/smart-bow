@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import target, arrow
+from app.routers import target, arrow, webrtc
+from app.frame_manager import start_receiver
+
+
 
 app = FastAPI(
     title="Smart Archery",
@@ -18,7 +21,13 @@ app.add_middleware(
 
 app.include_router(target.router, prefix="/target", tags=["target"])
 app.include_router(arrow.router, tags=["arrow"])
- 
+app.include_router(webrtc.router, prefix="/webrtc", tags=["webrtc"])
+
+
+@app.on_event("startup")
+async def startup_event():
+    start_receiver()
+
 
 @app.get("/")
 async def root():

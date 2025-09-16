@@ -2,17 +2,8 @@ import cv2
 import numpy as np
 from app.models.yolo_target import TargetModel
 class TargetService:
-    def __init__(self,cam_key):
+    def __init__(self):
         self.model = TargetModel()
-        self.cam_key = cam_key
-
-    def get_frame(self):
-        cap = cv2.VideoCapture(self.cam_key)
-        ret, frame = cap.read()
-        cap.release()
-        if not ret:
-            return None
-        return frame
     
     def order_points(self,pts):
         pts = np.array(pts)

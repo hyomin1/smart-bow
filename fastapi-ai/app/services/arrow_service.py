@@ -7,22 +7,19 @@ from app.services.target_service import TargetService
 
 
 class ArrowService:
-    def __init__(self, cam_key, cooldown_sec: float = 2.5, buffer_size: int = 7):
+    def __init__(self,  cooldown_sec: float = 2.5, buffer_size: int = 7):
        
         self.model = ArrowModel()
 
-      
         self.cooldown_sec = cooldown_sec
         self.last_hit_time = 0
 
-        # 상태 관리
         self.state = "idle"  # idle → tracking → hit_confirmed
         self.tracking_buffer = deque(maxlen=buffer_size)
         self.buffer_size = buffer_size
 
   
-        self.target_service = TargetService(cam_key)
-        self.cam_key = cam_key
+        self.target_service = TargetService()
         self.target_polygon = None   
 
     def update_target_polygon(self, frame):
@@ -39,7 +36,7 @@ class ArrowService:
         tip = corners[np.argmin(d_bottom)]
         return tip
 
-    def detect(self, frame):
+    def detect(self, frame, with_hit):
         """화살 검출 + 보정 + 명중 판정"""
         # 1. polygon 없으면 갱신
         if self.target_polygon is None:
@@ -70,14 +67,21 @@ class ArrowService:
             self.target_polygon.astype(np.int32),
             (float(corrected_tip[0]), float(corrected_tip[1])),
             False,
-        ) >= 0
+        ) >= 0  
+
+        xyxy = results.boxes.xyxy[0].cpu().numpy()
+        x1, y1, x2, y2 = map(int, xyxy)
 
         event = {
             "type": "arrow",
             "tip": [float(tip[0]), float(tip[1])],
             "corrected_tip": [float(corrected_tip[0]), float(corrected_tip[1])],
+            "bbox": [x1,y1,x2,y2]
         }
 
+        if not with_hit:
+            return event
+      
         # 3. state machine (hit 판정)
         if self.state == "idle" and inside:
             self.state = "tracking"
@@ -87,34 +91,24 @@ class ArrowService:
         elif self.state == "tracking":
             self.tracking_buffer.append((tip[0], tip[1], now))
 
-            if len(self.tracking_buffer) >= self.buffer_size:
-                inside_ratio = sum(
-                    cv2.pointPolygonTest(
-                        self.target_polygon.astype(np.int32),
-                        (float(x), float(y)),
-                        False,
-                    ) >= 0
-                    for x, y, _ in self.tracking_buffer
-                ) / len(self.tracking_buffer)
+            if  (now - self.last_hit_time) >= self.cooldown_sec:
+                print('hit!!')
+                inside_points = [
+                    (x, y) for x, y, _ in self.tracking_buffer
+                    if cv2.pointPolygonTest(self.target_polygon, (x, y), False) >= 0
+                ]
+                if inside_points:
+                    # polygon 안에서 가장 깊숙한 좌표 선택
+                    hit_tip = max(
+                        inside_points,
+                        key=lambda p: cv2.pointPolygonTest(self.target_polygon, (p[0], p[1]), True)
+                    )
+                    self.last_hit_time = now
+                    self.state = "hit_confirmed"
 
-                # 조건 만족 → hit 확정
-                if inside_ratio >= 0.6 and (now - self.last_hit_time) >= self.cooldown_sec:
-                    inside_points = [
-                        (x, y) for x, y, _ in self.tracking_buffer
-                        if cv2.pointPolygonTest(self.target_polygon, (x, y), False) >= 0
-                    ]
-                    if inside_points:
-                        # polygon 안에서 가장 깊숙한 좌표 선택
-                        hit_tip = max(
-                            inside_points,
-                            key=lambda p: cv2.pointPolygonTest(self.target_polygon, (p[0], p[1]), True)
-                        )
-                        self.last_hit_time = now
-                        self.state = "hit_confirmed"
-
-                        event["type"] = "hit"
-                        event["hit_tip"] = [float(hit_tip[0]), float(hit_tip[1])]
-                        return event
+                    event["type"] = "hit"
+                    event["hit_tip"] = [float(hit_tip[0]), float(hit_tip[1])]
+                    return event
 
         elif self.state == "hit_confirmed":
             # 쿨다운 지나면 idle로 복귀
