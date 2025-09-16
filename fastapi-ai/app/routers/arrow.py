@@ -25,7 +25,9 @@ async def arrow_ws(ws: WebSocket):
                 event = await asyncio.to_thread(
                     arrow_service.detect, frame, with_hit=True
                 )
-
+                if event is None:
+                    continue
+               
                 if event["type"] == "hit" and arrow_service.target_polygon is not None:
                     M, dst_pts = get_perspective_transform(
                         arrow_service.target_polygon, tw, th
