@@ -54,7 +54,7 @@ export default function TargetOverlayView() {
     if (!corners) return;
 
     const ws = new WebSocket(
-      `ws://localhost:8000/ws/arrow?tw=${targetW}&th=${targetH}`
+      `${import.meta.env.VITE_WEBSOCKET_URL}arrow?tw=${targetW}&th=${targetH}`
     );
     ws.onopen = () => console.log('ws open');
     ws.onmessage = (event) => {

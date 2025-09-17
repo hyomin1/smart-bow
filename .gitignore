@@ -10,3 +10,6 @@ mediasoup-gateway
 
 .env
 
+
+Dockerfile
+docker-compose.yml
