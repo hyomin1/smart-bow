@@ -29,11 +29,7 @@ export default function CamWebRTC() {
       await pc.setLocalDescription(offer);
 
       const resp = await api.post('webrtc/offer', pc.localDescription);
-      // const resp = await fetch('http://localhost:8000/webrtc/offer', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(pc.localDescription),
-      // });
+
       const answer = await resp.data;
       await pc.setRemoteDescription(answer);
     }
@@ -48,7 +44,7 @@ export default function CamWebRTC() {
       playsInline
       muted
       controls
-      className='w-full h-full bg-black object-cover'
+      className='w-full h-full bg-black object-contain'
     />
   );
 }

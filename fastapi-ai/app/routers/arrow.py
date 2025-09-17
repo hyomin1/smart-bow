@@ -1,6 +1,7 @@
 import asyncio
 from fastapi import APIRouter, WebSocket
 from app.services.arrow_service import ArrowService
+from app.models.person_model import PersonModel
 from app.utils.transform import get_perspective_transform, transform_points
 from app.frame_manager import frame_queue  
 from starlette.websockets import WebSocketDisconnect
@@ -8,6 +9,7 @@ from starlette.websockets import WebSocketDisconnect
 router = APIRouter()
 
 arrow_service = ArrowService()
+person_model = PersonModel()
 
 @router.websocket("/ws/arrow")
 async def arrow_ws(ws: WebSocket):
@@ -20,6 +22,13 @@ async def arrow_ws(ws: WebSocket):
         while True:
             if not frame_queue.empty():
                 frame = frame_queue.get()
+
+                person_results = await asyncio.to_thread(person_model.predict,frame)
+                if len(person_results.boxes) > 0:
+                    await ws.send_json({"type": "person"})
+                    print('사람 감지됨, 화살 탐지 중단')
+                    await asyncio.sleep(30)
+                    continue
 
                 # 추론은 별도 스레드에서 실행
                 event = await asyncio.to_thread(

@@ -3,17 +3,22 @@ import numpy as np
 import time
 from collections import deque
 from app.models.yolo_arrow import ArrowModel 
+from app.models.person_model import PersonModel
 from app.services.target_service import TargetService   
 
 
 class ArrowService:
-    def __init__(self, buffer_size=7):
+    def __init__(self, buffer_size=7, cooldown_sec=1.0):
         self.model = ArrowModel()
+        self.person_model = PersonModel()
         self.tracking_buffer = deque(maxlen=buffer_size)
         self.buffer_size = buffer_size
 
         self.target_service = TargetService()
-        self.target_polygon = None   
+        self.target_polygon = None
+
+        self.last_hit_time = 0
+        self.cooldown_sec = cooldown_sec   
 
     def update_target_polygon(self, frame):
         """필요할 때만 과녁 polygon 갱신"""
@@ -36,6 +41,26 @@ class ArrowService:
         x1, y1, x2, y2 = map(int, xyxy)
         tip = np.array([x2, y2], dtype=np.float32)
         return tip
+    
+    def is_valid_hit(self):
+        if len(self.tracking_buffer) < 3:
+            return True
+    
+        speeds = []
+        for i in range(1, len(self.tracking_buffer)):
+            x1, y1, t1 = self.tracking_buffer[i-1]
+            x2, y2, t2 = self.tracking_buffer[i]
+            dt = max(t2 - t1, 1e-3)
+            v = np.linalg.norm([x2 - x1, y2 - y1]) / dt
+            speeds.append(v)
+
+        if not speeds:
+            return False
+
+        pre_avg = np.mean(speeds[:len(speeds)//2])
+        post_avg = np.mean(speeds[len(speeds)//2:])
+
+        return post_avg < pre_avg * 0.5
 
     def detect(self, frame, with_hit=True):
         """화살 검출 + 보정 + 명중 판정"""
@@ -44,15 +69,13 @@ class ArrowService:
             self.update_target_polygon(frame)
             if self.target_polygon is None:
                 return {"type": "error", "reason": "no_target"}
+            
 
         H, W = frame.shape[:2]
         results = self.model.predict(frame)
         now = time.time()
 
         event = {"type": "arrow", "tip": None, "bbox": None}
-
-        #TODO: 욜로 기본 모델에서 person 클래스로 사람 검출되면 그냥 return
-
        
         if results.boxes is not None and len(results.boxes) > 0:
             xyxy = results.boxes.xyxy[0].cpu().numpy()
@@ -67,7 +90,30 @@ class ArrowService:
             ) >= 0
 
             if inside:
+                if len(self.tracking_buffer) >= 3:
+                    last_positions = [(x, y) for x, y, _ in list(self.tracking_buffer)[-3:]]
+                    dists = [
+                        np.hypot(last_positions[i+1][0] - last_positions[i][0],
+                            last_positions[i+1][1] - last_positions[i][1])
+                        for i in range(len(last_positions)-1)
+                    ]
+                    avg_dist = np.mean(dists)
+
+                    # 움직임이 거의 없는 경우 → 정지 화살로 판단
+                    if avg_dist < 2:  
+                        print("정지 화살 -> 버퍼 추가 안 함")
+                        return event
+
+                    # 동일 좌표 반복되면 정지 화살
+                if self.tracking_buffer and all(
+                    abs(tip[0] - x) < 2 and abs(tip[1] - y) < 2
+                    for x, y, _ in list(self.tracking_buffer)[-5:]
+                ):
+                    print("반복 좌표 화살 -> 버퍼 추가 안 함")
+                    return event
+
                 self.tracking_buffer.append((tip[0], tip[1], now))
+
 
             event = {
                 "type": "arrow",
@@ -75,7 +121,6 @@ class ArrowService:
                 "bbox": [x1, y1, x2, y2]
             }
 
-            # 스트리밍 모드  끝
             if not with_hit:
                 return event
 
@@ -85,40 +130,20 @@ class ArrowService:
             or (0 < len(self.tracking_buffer) < self.buffer_size
                 and now - self.tracking_buffer[-1][2] > 0.5)
         ):
-            inside_points = [
-                (x, y) for x, y, _ in self.tracking_buffer
-                if cv2.pointPolygonTest(self.target_polygon, (x, y), False) >= 0
-            ]
-            #TODO: 속도 기반해서 그냥 바닥에 꽂히는 경우도 체크
-            # if inside_points: and self.is_valid_hit():
-            if inside_points:
-                hit_tip = max(inside_points, key=lambda p: p[1])  # y 가장 큰 값
+            print('버퍼 확인',self.tracking_buffer)
+     
+            if self.tracking_buffer and (now - self.last_hit_time >= self.cooldown_sec):
+            
+                hit_tip = max(self.tracking_buffer, key=lambda p: p[1])  # y 가장 큰 값
                 event["type"] = "hit"
                 event["hit_tip"] = [float(hit_tip[0]), float(hit_tip[1])]
+                self.last_hit_time = now
+                self.tracking_buffer.clear()
+                return event
+
             self.tracking_buffer.clear()
 
         return event
 
 
-# def is_valid_hit(self):
-#     if len(self.tracking_buffer) < 3:
-#         return False
-    
-#     speeds = []
-#     for i in range(1, len(self.tracking_buffer)):
-#         x1, y1, t1 = self.tracking_buffer[i-1]
-#         x2, y2, t2 = self.tracking_buffer[i]
-#         dt = max(t2 - t1, 1e-3)
-#         v = np.linalg.norm([x2 - x1, y2 - y1]) / dt
-#         speeds.append(v)
 
-#     
-#     if not speeds:
-#         return False
-
-#     
-#     pre_avg = np.mean(speeds[:len(speeds)//2])
-#     post_avg = np.mean(speeds[len(speeds)//2:])
-
-#    
-#     return post_avg < pre_avg * 0.5

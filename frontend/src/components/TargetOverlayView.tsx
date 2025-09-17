@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react';
 import { api } from '../api/axios';
+import { motion } from 'framer-motion';
 
 type Corner = [number, number];
 type Size = { width: number; height: number };
@@ -9,7 +10,7 @@ export default function TargetOverlayView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<Size>();
   const [corners, setCorners] = useState<Corner[] | null>(null);
-  const [hits, setHits] = useState<Hit[]>([]);
+  const [hit, setHit] = useState<Hit | null>(null);
 
   useLayoutEffect(() => {
     const updateSize = () => {
@@ -28,7 +29,7 @@ export default function TargetOverlayView() {
   const { targetW, targetH } = useMemo(() => {
     if (!size) return { targetW: 400, targetH: 400 };
     return {
-      targetW: Math.round(size.width * 0.35),
+      targetW: Math.round(size.width * 0.35), // 전체화면에선 0.4
       targetH: Math.round(size.height * 0.5),
     };
   }, [size]);
@@ -59,9 +60,10 @@ export default function TargetOverlayView() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'hit' && data.corrected_hit) {
-        console.log('적중', data);
         const [x, y] = data.corrected_hit;
-        setHits((prev) => [...prev, { x, y }]);
+        setHit({ x, y });
+
+        setTimeout(() => setHit(null), 3000);
       }
     };
     ws.onclose = (event) => {
@@ -155,32 +157,75 @@ export default function TargetOverlayView() {
               );
             })
           )}
+
           {/* 화살 적중 지점 */}
-          {/* 화살 적중 지점 */}
-          {hits.map((hit, idx) => (
-            <g key={idx}>
-              {/* 바깥 원: 오차 범위 */}
+          {hit && (
+            <g>
+              <motion.circle
+                cx={hit.x}
+                cy={hit.y}
+                r={0}
+                fill='none'
+                stroke='#0ff'
+                strokeWidth={4}
+                initial={{ r: 0, opacity: 1, strokeWidth: 4 }}
+                animate={{ r: 50, opacity: 0, strokeWidth: 1 }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+              <motion.circle
+                cx={hit.x}
+                cy={hit.y}
+                r={0}
+                fill='none'
+                stroke='orange'
+                strokeWidth={3}
+                initial={{ r: 0, opacity: 1, strokeWidth: 3 }}
+                animate={{ r: 35, opacity: 0, strokeWidth: 1 }}
+                transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+              />
+
               <circle
                 cx={hit.x}
                 cy={hit.y}
-                r={15}
-                fill='rgba(0,255,255,0.15)' // 반투명 청록
-                stroke='#0ff'
-                strokeWidth={1.5}
-                style={{ filter: 'drop-shadow(0 0 4px #0ff)' }}
+                r={18}
+                fill='rgba(0,255,255,0.15)'
+                style={{ filter: 'blur(8px)' }}
               />
-              {/* 안쪽 원: 실제 명중점 */}
-              <circle
+
+              <motion.circle
                 cx={hit.x}
                 cy={hit.y}
                 r={6}
                 fill='orange'
                 stroke='white'
                 strokeWidth={2}
-                style={{ filter: 'drop-shadow(0 0 4px orange)' }}
+                style={{
+                  filter: 'drop-shadow(0 0 8px orange)',
+                }}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              />
+
+              <motion.circle
+                cx={hit.x}
+                cy={hit.y}
+                r={6}
+                fill='none'
+                stroke='orange'
+                strokeWidth={2}
+                animate={{
+                  r: [6, 15, 6],
+                  opacity: [0.8, 0.2, 0.8],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
               />
             </g>
-          ))}
+          )}
         </svg>
       ) : (
         <span className='text-white'>스트림 중단</span>
