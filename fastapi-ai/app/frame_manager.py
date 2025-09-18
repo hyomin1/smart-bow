@@ -7,7 +7,7 @@ from app.core import config
 frame_queue = queue.Queue(maxsize=10)
 
 def receive_frames():
-    cap = cv2.VideoCapture(config.CAMERA_URLS["test"], cv2.CAP_FFMPEG)
+    cap = cv2.VideoCapture(config.CAMERA_URLS["cam2"], cv2.CAP_FFMPEG)
     if not cap.isOpened():
         raise RuntimeError("카메라 열기 실패")
 
