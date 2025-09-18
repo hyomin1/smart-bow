@@ -1,14 +1,14 @@
 version: '3.9'
 services:
   fastapi:
-    build: .
+    build: ./fastapi-ai
     container_name: fastapi
     ports:
       - '80:8000'
     env_file:
-      - .env
+      - ./fastapi-ai/.env
     volumes:
-      - ./weights:/fastapi/weights
+      - ./fastapi-ai/weights:/fastapi/weights
     deploy:
       resources:
         reservations:
