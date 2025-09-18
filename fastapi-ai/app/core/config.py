@@ -11,3 +11,5 @@ CAMERA_URLS = {
     "cam3": os.getenv("CAM3_URL"),
     "test": os.getenv("TEST")
 }
+
+ALLOW_ORIGINS=os.getenv("ALLOW_ORIGINS").split(",")
