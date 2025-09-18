@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import target, arrow, webrtc
 from app.frame_manager import start_receiver
-from app.core.config import config
+from app.core import config
 
 
 
