@@ -5,7 +5,12 @@ export default function CamWebRTC() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const pc = new RTCPeerConnection();
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' }, // 공용 STUN
+        // 필요하면 TURN 서버 추가
+      ],
+    });
 
     // 서버에서 오는 스트림 붙이기
     pc.ontrack = (event) => {
