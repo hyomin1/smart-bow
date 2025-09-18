@@ -7,8 +7,12 @@ export default function CamWebRTC() {
   useEffect(() => {
     const pc = new RTCPeerConnection({
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' }, // 공용 STUN
-        // 필요하면 TURN 서버 추가
+        { urls: 'stun:stun.l.google.com:19302' },
+        {
+          urls: `turn:${import.meta.env.VITE_TURN_SERVER}:3478`,
+          username: import.meta.env.VITE_TURN_USERNAME,
+          credential: import.meta.env.VITE_TURN_CREDENTIAL,
+        },
       ],
     });
 
