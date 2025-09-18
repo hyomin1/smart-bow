@@ -17,6 +17,19 @@ export default function CamWebRTC() {
     });
 
     // 서버에서 오는 스트림 붙이기
+    pc.oniceconnectionstatechange = () => {
+      console.log('ICE Connection State:', pc.iceConnectionState);
+    };
+
+    pc.onicegatheringstatechange = () => {
+      console.log('ICE Gathering State:', pc.iceGatheringState);
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log('ICE Candidate:', event.candidate);
+      }
+    };
     pc.ontrack = (event) => {
       if (videoRef.current) {
         videoRef.current.srcObject = event.streams[0];
