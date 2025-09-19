@@ -1,14 +1,16 @@
 version: '3.9'
 services:
-  fastapi:
-    build: ./fastapi-ai
-    container_name: fastapi
+  smartbow:
+    build:
+      context: .
+      dockerfile: fastapi-ai/Dockerfile
+    container_name: smartbow
     ports:
       - '8000:8000'
     env_file:
       - ./fastapi-ai/.env
     volumes:
-      - ./fastapi-ai/weights:/fastapi/weights
+      - ./fastapi-ai/weights:/smartbow/weights
     deploy:
       resources:
         reservations:

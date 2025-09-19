@@ -1,7 +1,14 @@
+FROM node:22.17.0 AS frontend-builder
+
+WORKDIR /frontend
+COPY ./frontend ./frontend
+WORKDIR /frontend/frontend
+
+RUN npm install && npm run build
+
 FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-devel
 
-# 작업 디렉토리 설정
-WORKDIR /fastapi
+WORKDIR /smartbow
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
@@ -16,6 +23,8 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-COPY ./app ./app
+COPY ./fastapi-ai/app ./app
+
+COPY --from=frontend-builder /frontend/frontend/dist ./dist
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
