@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 from app.routers import target, arrow, webrtc
 from app.services.registry import registry
-
 from app.core import config
+
+import os
 
 app = FastAPI(
     title="Smart Archery",
@@ -33,10 +37,20 @@ async def startup_event():
 async def shutdown_event():
     registry.stop_all()
 
-@app.get("/")
+@app.get("/api")
 async def root():
     return {"message": "Hello World"}
 
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
+FRONTEND_DIST = os.path.join(BASE_DIR, "../frontend/dist")
 
+app.mount(
+    "/assets",
+    StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")),
+    name="assets"
+)
 
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))

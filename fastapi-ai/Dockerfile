@@ -1,7 +1,7 @@
 FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-devel
 
 # 작업 디렉토리 설정
-WORKDIR /app
+WORKDIR /fastapi
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
