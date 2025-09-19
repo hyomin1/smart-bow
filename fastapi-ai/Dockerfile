@@ -1,6 +1,7 @@
-FROM python:3.12-slim
+FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-devel
 
-WORKDIR /fastapi
+# 작업 디렉토리 설정
+WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
@@ -11,12 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip \
-    && pip install torch==2.2.2+cu121 torchvision==0.17.2+cu121 torchaudio==2.2.2+cu121 \
-    -f https://download.pytorch.org/whl/torch_stable.html
-
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY ./app ./app
 

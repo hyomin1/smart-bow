@@ -1,4 +1,3 @@
-import React from 'react';
 import CamWebRTC from '../components/CamWebRTC';
 import { useParams } from 'react-router-dom';
 import TargetOverlayView from '../components/TargetOverlayView';
