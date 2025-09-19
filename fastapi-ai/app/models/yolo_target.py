@@ -1,6 +1,5 @@
 from ultralytics import YOLO
 
-
 class TargetModel:
     def __init__(self):
         self.model = YOLO("weights/target_best.pt")

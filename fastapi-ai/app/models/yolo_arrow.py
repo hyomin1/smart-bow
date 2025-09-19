@@ -5,6 +5,7 @@ class ArrowModel:
     def __init__(self):
         self.model = YOLO("weights/arrow_best.pt")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print("화살모델 gpu",self.device)
         self.model.to(self.device)
     
     def predict(self,frame):

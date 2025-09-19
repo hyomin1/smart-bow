@@ -1,20 +1,36 @@
 import { useEffect, useRef } from 'react';
 import { api } from '../api/axios';
 
-export default function CamWebRTC() {
+interface Props {
+  camId: string;
+}
+
+export default function CamWebRTC({ camId }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        {
-          urls: `turn:${import.meta.env.VITE_TURN_SERVER}:3478`,
-          username: import.meta.env.VITE_TURN_USERNAME,
-          credential: import.meta.env.VITE_TURN_CREDENTIAL,
-        },
-      ],
-    });
+    const pc = new RTCPeerConnection();
+
+    setInterval(async () => {
+      const stats = await pc.getStats();
+      stats.forEach((report) => {
+        if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
+          console.log(
+            '비트레이트:',
+            Math.round((report.bytesReceived * 8) / 1024 / 1024),
+            'Mbps'
+          );
+          console.log('FPS:', report.framesPerSecond);
+          console.log('패킷 손실:', report.packetsLost);
+          console.log('코덱 ID:', report.codecId);
+        }
+
+        // 코덱 상세 정보
+        if (report.type === 'codec' && report.mimeType.includes('video')) {
+          console.log('코덱 정보:', report.mimeType, report.sdpFmtpLine);
+        }
+      });
+    }, 3000);
 
     // 서버에서 오는 스트림 붙이기
     pc.oniceconnectionstatechange = () => {
@@ -50,14 +66,15 @@ export default function CamWebRTC() {
       });
       await pc.setLocalDescription(offer);
 
-      const resp = await api.post('webrtc/offer', pc.localDescription);
+      const resp = await api.post(`webrtc/offer/${camId}`, pc.localDescription);
 
       const answer = await resp.data;
+
       await pc.setRemoteDescription(answer);
     }
 
     start();
-  }, []);
+  }, [camId]);
 
   return (
     <video
@@ -66,7 +83,7 @@ export default function CamWebRTC() {
       playsInline
       muted
       controls
-      className='w-full h-full bg-black object-contain'
+      className='w-full h-full bg-black object-cover'
     />
   );
 }

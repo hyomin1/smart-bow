@@ -1,10 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import target, arrow, webrtc
-from app.frame_manager import start_receiver
+from app.services.registry import registry
+
 from app.core import config
-
-
 
 app = FastAPI(
     title="Smart Archery",
@@ -27,8 +26,12 @@ app.include_router(webrtc.router, prefix="/webrtc", tags=["webrtc"])
 
 @app.on_event("startup")
 async def startup_event():
-    start_receiver()
+    for name, url in config.CAMERA_URLS.items():
+        registry.add_camera(name,url)
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    registry.stop_all()
 
 @app.get("/")
 async def root():

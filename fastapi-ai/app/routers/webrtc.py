@@ -1,33 +1,29 @@
-import json
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from aiortc import RTCPeerConnection, RTCSessionDescription
+from app.core import config
 
-from app.services.video_track import ArrowVideoTrack
+from app.services.video_service import  CameraVideoTrack
+from app.services.registry import registry
 
 router = APIRouter()
 pcs = set() 
 
-
-@router.post("/offer")
-async def offer(request: Request):
+@router.post("/offer/{cam_id}")
+async def offer(cam_id,request: Request):
+    frame_manager = registry.get_camera(cam_id)
+    if not frame_manager:
+        return JSONResponse({"detail": "카메라를 찾을 수 없습니다."}, status_code=404)
     
     params = await request.json()
-
-    # 브라우저에서 온 offer
     offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
-    # WebRTC 연결 생성 
     pc = RTCPeerConnection()
-
     pcs.add(pc)
 
-    pc.addTrack(ArrowVideoTrack())
+    pc.addTrack(CameraVideoTrack(frame_manager))
 
-    # 클라 → 서버 오퍼 등록
     await pc.setRemoteDescription(offer)
-
-    # 서버 → 클라 답변 생성
     answer = await pc.createAnswer()
     await pc.setLocalDescription(answer)
 

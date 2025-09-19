@@ -6,7 +6,7 @@ type Corner = [number, number];
 type Size = { width: number; height: number };
 type Hit = { x: number; y: number };
 
-export default function TargetOverlayView() {
+export default function TargetOverlayView({ camId }: { camId: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<Size>();
   const [corners, setCorners] = useState<Corner[] | null>(null);
@@ -39,7 +39,7 @@ export default function TargetOverlayView() {
     const fetchCorners = async () => {
       try {
         const { data } = await api.get(
-          `target/target-corners?tw=${targetW}&th=${targetH}`
+          `target/corners/${camId}?tw=${targetW}&th=${targetH}`
         );
         setCorners(data.corners);
       } catch (err) {
@@ -48,13 +48,15 @@ export default function TargetOverlayView() {
     };
     const handler = setTimeout(fetchCorners, 1000);
     return () => clearTimeout(handler);
-  }, [size, targetW, targetH]);
+  }, [size, targetW, targetH, camId]);
 
   useEffect(() => {
     if (!corners) return;
 
     const ws = new WebSocket(
-      `${import.meta.env.VITE_WEBSOCKET_URL}arrow?tw=${targetW}&th=${targetH}`
+      `${
+        import.meta.env.VITE_WEBSOCKET_URL
+      }hit/${camId}?tw=${targetW}&th=${targetH}`
     );
     ws.onopen = () => console.log('ws open');
     ws.onmessage = (event) => {
@@ -77,7 +79,7 @@ export default function TargetOverlayView() {
       console.error('WebSocket 에러', err);
     };
     return () => ws.close();
-  }, [corners, targetW, targetH]);
+  }, [corners, targetW, targetH, camId]);
 
   return (
     <div

@@ -1,12 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import App from './App.tsx';
-import adapter from 'webrtc-adapter';
-(window as any).adapter = adapter;
+import { RouterProvider } from 'react-router-dom';
+// import adapter from 'webrtc-adapter';
+import { router } from './router';
+//(window as any).adapter = adapter;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <RouterProvider router={router} />
   </StrictMode>
 );

@@ -3,13 +3,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-#VIDEO_SOURCE = os.getenv("VIDEO_SOURCE", "output.mp4")
 
 CAMERA_URLS = {
-    "cam1": os.getenv("CAM1_URL"),
-    "cam2": os.getenv("CAM2_URL"),
-    "cam3": os.getenv("CAM3_URL"),
-    "test": os.getenv("TEST")
+    #"target1": os.getenv("CAM1_URL"),
+    "target2": os.getenv("CAM2_URL"),
+    #"target3": os.getenv("CAM3_URL"),
+    "shooter1": os.getenv("SHOOTER1_URL"),
+    # "shooter2" : os.getenv("SHOOTER2_URL"),
+    #"test": os.getenv("TEST")
 }
 
 ALLOW_ORIGINS=os.getenv("ALLOW_ORIGINS").split(",")
