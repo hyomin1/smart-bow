@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from aiortc import RTCPeerConnection, RTCSessionDescription
-from app.core import config
 
 from app.services.video_service import  CameraVideoTrack
 from app.services.registry import registry
@@ -22,6 +21,7 @@ async def offer(cam_id,request: Request):
     pcs.add(pc)
 
     pc.addTrack(CameraVideoTrack(frame_manager))
+    
 
     await pc.setRemoteDescription(offer)
     answer = await pc.createAnswer()

@@ -27,10 +27,8 @@ class FrameManager:
         #     print(f"[INFO] {self.name}: 카메라 연결 시도 (GStreamer)")
         # else:
         self.cap = cv2.VideoCapture(self.source)
-        print(f"[INFO] {self.name}: 카메라 연결 시도 (CPU)")
      
         self.last_reconnect_time = time.time()
-        print(platform.system())
         print(f"[INFO] {self.name}: 카메라 연결 시도")
     
     def _reader(self):
