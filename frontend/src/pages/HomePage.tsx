@@ -34,6 +34,11 @@ export default function HomePage() {
                 name: '3관',
                 color: 'from-purple-500 to-indigo-600',
               },
+              {
+                id: 'test',
+                name: '테스트용',
+                color: 'from-pink-500 to-pink-600',
+              },
             ].map((target) => (
               <Link
                 key={target.id}
