@@ -10,6 +10,16 @@ export default function CamWebRTC({ camId }: Props) {
 
   useEffect(() => {
     const pc = new RTCPeerConnection();
+    // const pc = new RTCPeerConnection({
+    //   iceServers: [
+    //     { urls: 'stun:stun.l.google.com:19302' },
+    //     {
+    //       urls: `turn:${import.meta.env.VITE_TURN_SERVER}:3478?transport=udp`,
+    //       username: import.meta.env.VITE_TURN_USERNAME,
+    //       credential: import.meta.env.VITE_TURN_CREDENTIAL,
+    //     },
+    //   ],
+    // });
 
     setInterval(async () => {
       const stats = await pc.getStats();

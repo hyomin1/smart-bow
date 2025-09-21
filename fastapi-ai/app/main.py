@@ -40,17 +40,3 @@ async def shutdown_event():
 @app.get("/api")
 async def root():
     return {"message": "Hello World"}
-
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
-FRONTEND_DIST = os.path.join(BASE_DIR, "../frontend/dist")
-
-app.mount(
-    "/assets",
-    StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")),
-    name="assets"
-)
-
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))

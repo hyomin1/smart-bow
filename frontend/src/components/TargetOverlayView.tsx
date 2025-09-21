@@ -61,6 +61,7 @@ export default function TargetOverlayView({ camId }: { camId: string }) {
     ws.onopen = () => console.log('ws open');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log('수신 데이터:', data);
       if (data.type === 'hit' && data.corrected_hit) {
         const [x, y] = data.corrected_hit;
         setHit({ x, y });

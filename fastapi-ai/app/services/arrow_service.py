@@ -18,7 +18,9 @@ class ArrowService:
         self.target_polygon = None
 
         self.last_hit_time = 0
-        self.cooldown_sec = cooldown_sec   
+        self.cooldown_sec = cooldown_sec
+
+        self.last_box = None   
 
     def update_target_polygon(self, frame):
         """필요할 때만 과녁 polygon 갱신"""
@@ -81,7 +83,9 @@ class ArrowService:
             xyxy = results.boxes.xyxy[0].cpu().numpy()
             x1, y1, x2, y2 = map(int, xyxy)
             tip = self.leading_tip_from_bbox(xyxy, H)
-
+        
+            self.last_box = (x1,y1,x2,y2)
+          
             # polygon 내부 여부 확인
             inside = cv2.pointPolygonTest(
                 self.target_polygon.astype(np.int32),
@@ -114,7 +118,7 @@ class ArrowService:
 
                 self.tracking_buffer.append((tip[0], tip[1], now))
 
-
+        
             event = {
                 "type": "arrow",
                 "tip": [float(tip[0]), float(tip[1])],
@@ -123,6 +127,8 @@ class ArrowService:
 
             if not with_hit:
                 return event
+        else:
+            self.last_box = None
 
         # hit 판정
         if (
@@ -146,4 +152,4 @@ class ArrowService:
         return event
 
 
-
+arrow_service = ArrowService()

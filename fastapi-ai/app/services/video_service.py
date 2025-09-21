@@ -1,11 +1,11 @@
 from aiortc import VideoStreamTrack
 from av import VideoFrame
-from app.services.arrow_service import ArrowService
+from app.services.arrow_service import arrow_service
 
 import numpy as np
 import cv2, asyncio, time
 
-arrow_service = ArrowService()
+
 
 
 class CameraVideoTrack(VideoStreamTrack):
@@ -25,6 +25,13 @@ class CameraVideoTrack(VideoStreamTrack):
         if frame is None:
             await asyncio.sleep(0.01)
             return await self.recv()
+        
+        frame = frame.copy()
+
+        if arrow_service.last_box is not None:
+            x1, y1, x2, y2 = arrow_service.last_box
+            print('화살 검출',x1,y1,x2,y2)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         video_frame = VideoFrame.from_ndarray(frame, format="rgb24")

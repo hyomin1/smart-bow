@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import APIRouter, WebSocket
-from app.services.arrow_service import ArrowService
+from app.services.arrow_service import arrow_service
 from app.models.person_model import PersonModel
 from app.utils.transform import get_perspective_transform, transform_points
 from app.services.registry import registry
@@ -8,7 +8,6 @@ from starlette.websockets import WebSocketDisconnect
 
 router = APIRouter()
 
-arrow_service = ArrowService()
 person_model = PersonModel()
 
 @router.websocket("/hit/{cam_id}")
@@ -31,19 +30,19 @@ async def arrow_ws(ws: WebSocket, cam_id: str):
                 await asyncio.sleep(0.05)
                 continue
 
-            # 사람 감지
-            person_results = await asyncio.to_thread(person_model.predict, frame)
-            if len(person_results.boxes) > 0:
-                await ws.send_json({"type": "person"})
-                print("사람 감지됨, 화살 탐지 중단")
-                await asyncio.sleep(30)  # 30초 중단
-                continue
-
             # 화살 탐지
             event = await asyncio.to_thread(arrow_service.detect, frame, with_hit=True)
             if event is None:
                 await asyncio.sleep(0.05)
                 continue
+            
+            if event['type'] == 'hit':
+                person_results = await asyncio.to_thread(person_model.predict, frame)
+                if len(person_results.boxes) > 0:
+                    await ws.send_json({"type": "person"})
+                    print("사람 감지됨, 화살 탐지 중단")
+                    await asyncio.sleep(30)  # 30초 중단
+                    continue
 
             if event["type"] == "hit" and arrow_service.target_polygon is not None:
                 M, dst_pts = get_perspective_transform(
