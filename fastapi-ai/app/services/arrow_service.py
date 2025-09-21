@@ -108,7 +108,7 @@ class ArrowService:
 
                     # 움직임이 거의 없는 경우 → 정지 화살로 판단
                     if avg_dist < 5:  
-                        print("정지 화살 -> 버퍼 추가 안 함")
+                        print("정지 화살 -> 버퍼 추가 안 함",self.tracking_buffer)
                         return event
 
                     # 동일 좌표 반복되면 정지 화살
@@ -119,7 +119,7 @@ class ArrowService:
                         for x, y, _ in recent
                     )
                     if same_count >= len(recent) * 0.8:
-                        print("반복 좌표 화살 -> 버퍼 추가 안 함")
+                        print("반복 좌표 화살 -> 버퍼 추가 안 함",self.tracking_buffer)
                         return event
 
                 self.tracking_buffer.append((tip[0], tip[1], now))
@@ -150,9 +150,12 @@ class ArrowService:
                 event["type"] = "hit"
                 event["hit_tip"] = [float(hit_tip[0]), float(hit_tip[1])]
                 self.last_hit_time = now
+                self.tracking_buffer.clear()
+                return event
 
-        self.tracking_buffer.clear()
+            self.tracking_buffer.clear()
         return event
 
 
 arrow_service = ArrowService()
+
