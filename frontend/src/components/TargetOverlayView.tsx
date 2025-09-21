@@ -66,7 +66,7 @@ export default function TargetOverlayView({ camId }: { camId: string }) {
         const [x, y] = data.corrected_hit;
         setHit({ x, y });
 
-        setTimeout(() => setHit(null), 10_000);
+        //  setTimeout(() => setHit(null), 10_000);
       }
     };
     ws.onclose = (event) => {
