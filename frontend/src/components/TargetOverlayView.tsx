@@ -65,8 +65,6 @@ export default function TargetOverlayView({ camId }: { camId: string }) {
       if (data.type === 'hit' && data.corrected_hit) {
         const [x, y] = data.corrected_hit;
         setHit({ x, y });
-
-        setTimeout(() => setHit(null), 10_000);
       }
     };
     ws.onclose = (event) => {
@@ -81,6 +79,15 @@ export default function TargetOverlayView({ camId }: { camId: string }) {
     };
     return () => ws.close();
   }, [corners, targetW, targetH, camId]);
+
+  useEffect(() => {
+    if (hit) {
+      const timer = setTimeout(() => {
+        setHit(null);
+      }, 20_000);
+      return () => clearTimeout(timer);
+    }
+  }, [hit]);
 
   return (
     <div
