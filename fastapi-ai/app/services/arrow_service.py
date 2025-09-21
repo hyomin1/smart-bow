@@ -8,7 +8,7 @@ from app.services.target_service import TargetService
 
 
 class ArrowService:
-    def __init__(self, buffer_size=7, cooldown_sec=1.0):
+    def __init__(self, buffer_size=7, cooldown_sec=3.0):
         self.model = ArrowModel()
         self.person_model = PersonModel()
         self.tracking_buffer = deque(maxlen=buffer_size)
@@ -87,11 +87,14 @@ class ArrowService:
             self.last_box = (x1,y1,x2,y2)
           
             # polygon 내부 여부 확인
-            inside = cv2.pointPolygonTest(
-                self.target_polygon.astype(np.int32),
-                (float(tip[0]), float(tip[1])),
-                False,
-            ) >= 0
+            corners = [(x1,y1),(x2,y1),(x1,y2),(x2,y2)]
+            inside = any(cv2.pointPolygonTest(
+                    self.target_polygon.astype(np.int32),
+                    (float(x), float(y)),
+                    False,
+                ) >= 0
+                for x, y in corners
+            )
 
             if inside:
                 if len(self.tracking_buffer) >= 3:

@@ -30,7 +30,6 @@ class CameraVideoTrack(VideoStreamTrack):
 
         if arrow_service.last_box is not None:
             x1, y1, x2, y2 = arrow_service.last_box
-            print('화살 검출',x1,y1,x2,y2)
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
