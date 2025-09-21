@@ -97,7 +97,7 @@ class ArrowService:
             )
 
             if inside:
-                if len(self.tracking_buffer) >= 3:
+                if len(self.tracking_buffer) >= 2:
                     last_positions = [(x, y) for x, y, _ in list(self.tracking_buffer)[-3:]]
                     dists = [
                         np.hypot(last_positions[i+1][0] - last_positions[i][0],
@@ -107,17 +107,20 @@ class ArrowService:
                     avg_dist = np.mean(dists)
 
                     # 움직임이 거의 없는 경우 → 정지 화살로 판단
-                    if avg_dist < 2:  
+                    if avg_dist < 5:  
                         print("정지 화살 -> 버퍼 추가 안 함")
                         return event
 
                     # 동일 좌표 반복되면 정지 화살
-                if self.tracking_buffer and all(
-                    abs(tip[0] - x) < 2 and abs(tip[1] - y) < 2
-                    for x, y, _ in list(self.tracking_buffer)[-5:]
-                ):
-                    print("반복 좌표 화살 -> 버퍼 추가 안 함")
-                    return event
+                if self.tracking_buffer:
+                    recent = list(self.tracking_buffer)[-5:]
+                    same_count = sum(
+                        abs(tip[0] - x) < 5 and abs(tip[1] - y) < 5
+                        for x, y, _ in recent
+                    )
+                    if same_count >= len(recent) * 0.8:
+                        print("반복 좌표 화살 -> 버퍼 추가 안 함")
+                        return event
 
                 self.tracking_buffer.append((tip[0], tip[1], now))
 
@@ -136,22 +139,19 @@ class ArrowService:
         # hit 판정
         if (
             len(self.tracking_buffer) >= self.buffer_size
-            or (0 < len(self.tracking_buffer) < self.buffer_size
+            or (2 <= len(self.tracking_buffer) and len(self.tracking_buffer) < self.buffer_size
                 and now - self.tracking_buffer[-1][2] > 0.5)
         ):
             print('버퍼 확인',self.tracking_buffer)
      
-            if self.tracking_buffer and (now - self.last_hit_time >= self.cooldown_sec):
+            if  now - self.last_hit_time >= self.cooldown_sec:
             
                 hit_tip = max(self.tracking_buffer, key=lambda p: p[1])  # y 가장 큰 값
                 event["type"] = "hit"
                 event["hit_tip"] = [float(hit_tip[0]), float(hit_tip[1])]
                 self.last_hit_time = now
-                self.tracking_buffer.clear()
-                return event
 
-            self.tracking_buffer.clear()
-
+        self.tracking_buffer.clear()
         return event
 
 
