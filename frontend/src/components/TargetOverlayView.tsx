@@ -61,8 +61,9 @@ export default function TargetOverlayView({ camId }: { camId: string }) {
     ws.onopen = () => console.log('ws open');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log('수신 데이터:', data);
+
       if (data.type === 'hit' && data.corrected_hit) {
+        console.log('수신 데이터:', data);
         const [x, y] = data.corrected_hit;
         setHit({ x, y });
       }
@@ -169,7 +170,7 @@ export default function TargetOverlayView({ camId }: { camId: string }) {
           )}
 
           {/* 화살 적중 지점 */}
-          {hit && (
+          {hit?.x != null && hit.y != null && (
             <g>
               <motion.circle
                 cx={hit.x}
