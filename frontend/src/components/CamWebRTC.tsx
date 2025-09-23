@@ -92,7 +92,7 @@ export default function CamWebRTC({ camId }: Props) {
       playsInline
       muted
       controls
-      className='w-full h-full bg-black object-contain'
+      className='w-full h-full bg-black object-cover'
     />
   );
 }

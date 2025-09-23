@@ -28,16 +28,6 @@ class ArrowService:
         if target_pts is not None:
             self.target_polygon = np.array(target_pts, dtype=np.float32)
 
-    # def leading_tip_from_bbox(self, xyxy, H):
-    #     """bbox corner 중 아래쪽을 tip으로 선택"""
-    #     x1, y1, x2, y2 = xyxy
-    #     corners = np.array(
-    #         [[x1, y1], [x2, y1], [x1, y2], [x2, y2]],
-    #         dtype=np.float32
-    #     )
-    #     d_bottom = H - corners[:, 1]
-    #     tip = corners[np.argmin(d_bottom)]
-    #     return tip
     def leading_tip_from_bbox(self, xyxy, H):
         """bbox 밑변의 우측 끝을 tip으로 선택"""
         x1, y1, x2, y2 = map(int, xyxy)
@@ -185,5 +175,5 @@ class ArrowService:
         return event
 
 
-arrow_service = ArrowService()
+
 
