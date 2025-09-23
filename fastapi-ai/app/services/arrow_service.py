@@ -72,7 +72,7 @@ class ArrowService:
             if self.target_polygon is None:
                 return {"type": "error", "reason": "no_target"}
             
-
+        #print("과녁영역좌표",self.target_polygon)
         H, W = frame.shape[:2]
         results = self.model.predict(frame)
         now = time.time()
@@ -88,6 +88,7 @@ class ArrowService:
           
             # polygon 내부 여부 확인
             corners = [(x1,y1),(x2,y1),(x1,y2),(x2,y2)]
+            
             inside = any(cv2.pointPolygonTest(
                     self.target_polygon.astype(np.int32),
                     (float(x), float(y)),
@@ -106,8 +107,10 @@ class ArrowService:
                     ]
                     avg_dist = np.mean(dists)
 
+                    polygon_bottom = int(np.max(self.target_polygon[:, 1]))
+
                     # 움직임이 거의 없는 경우 → 정지 화살로 판단
-                    if avg_dist < 5:  
+                    if avg_dist < 5 and tip[1] > polygon_bottom - 30:  
                         print("정지 화살 -> 버퍼 추가 안 함",self.tracking_buffer)
                         return event
 
@@ -121,7 +124,7 @@ class ArrowService:
                     if same_count >= len(recent) * 0.8:
                         print("반복 좌표 화살 -> 버퍼 추가 안 함",self.tracking_buffer)
                         return event
-
+                
                 self.tracking_buffer.append((tip[0], tip[1], now))
 
         
@@ -154,6 +157,31 @@ class ArrowService:
                 return event
 
             self.tracking_buffer.clear()
+        else:
+            if self.tracking_buffer:
+                elapsed = now - self.tracking_buffer[-1][2]
+                print("[DEBUG] HIT 조건 불충분:",
+                    "len =", len(self.tracking_buffer),
+                    "elapsed =", elapsed,
+                    "buffer =", list(self.tracking_buffer))
+                
+                # inside 인데 1프레임만 잡힌 경우 1프레임으로 판정
+                if len(self.tracking_buffer) == 1 and elapsed > 0.5:
+                    if now - self.last_hit_time >= self.cooldown_sec:
+                        hit_tip = self.tracking_buffer[0]
+                        event['type'] = 'hit'
+                        event['hit_tip'] = [float(hit_tip[0]), float(hit_tip[1])]
+                        self.last_hit_time = now
+                        print("1 프레임 HIT 발생:")
+                        self.tracking_buffer.clear()
+                        return event
+                    print("[DEBUG] 버퍼 초기화 (1프레임 오래됌)")
+                    self.tracking_buffer.clear()
+            else:
+                elapsed = None
+
+
+
         return event
 
 
