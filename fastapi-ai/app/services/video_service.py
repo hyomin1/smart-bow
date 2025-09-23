@@ -1,6 +1,6 @@
 from aiortc import VideoStreamTrack
 from av import VideoFrame
-from app.services.arrow_service import arrow_service
+from app.services.arrow_registry import arrow_registry
 
 import numpy as np
 import cv2, asyncio, time
@@ -27,6 +27,8 @@ class CameraVideoTrack(VideoStreamTrack):
             return await self.recv()
         
         frame = frame.copy()
+
+        arrow_service = arrow_registry.get(self.cam_id)
 
         if arrow_service.last_box is not None:
             x1, y1, x2, y2 = arrow_service.last_box

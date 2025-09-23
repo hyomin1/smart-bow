@@ -1,10 +1,11 @@
 import asyncio
 from fastapi import APIRouter, WebSocket
 from starlette.websockets import WebSocketDisconnect
-from app.services.arrow_service import arrow_service
 from app.models.person_model import PersonModel
 from app.utils.transform import get_perspective_transform, transform_points
 from app.services.registry import registry
+from app.services.arrow_registry import arrow_registry
+
 
 router = APIRouter()
 person_model = PersonModel()
@@ -17,7 +18,9 @@ detect_tasks: dict[str, asyncio.Task] = {}
 
 async def broadcast(cam_id: str, event: dict):
     """cam_id에 연결된 모든 세션에 이벤트 전송"""
+
     dead = []
+    arrow_service = arrow_registry.get(cam_id)
     for ws, tw, th in connected_clients.get(cam_id, set()):
         try:
             event_to_send = dict(event)  # 원본 복사
@@ -36,6 +39,7 @@ async def broadcast(cam_id: str, event: dict):
 
 async def detect_loop(cam_id: str, frame_manager):
     """cam_id별 화살/사람 탐지 루프"""
+    arrow_service = arrow_registry.get(cam_id)
     try:
         while True:
             frame = frame_manager.get_frame()
