@@ -31,8 +31,12 @@ class ArrowService:
     def leading_tip_from_bbox(self, xyxy, H):
         """bbox 밑변의 우측 끝을 tip으로 선택"""
         x1, y1, x2, y2 = map(int, xyxy)
-        tip = np.array([x2, y2], dtype=np.float32)
-        return tip
+        #tip = np.array([x2, y2], dtype=np.float32)
+        #return tip
+        tip_x = (x1 + x2) // 2
+        tip_y = (y1 + y2) // 2
+        return np.array([tip_x, tip_y], dtype=np.float32)
+        
     
     def is_valid_hit(self):
         if len(self.tracking_buffer) < 3:

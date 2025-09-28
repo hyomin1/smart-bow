@@ -35,7 +35,7 @@ export default function HomePage() {
                 color: 'from-purple-500 to-indigo-600',
               },
               {
-                id: 'test',
+                id: 'target-test',
                 name: '테스트용',
                 color: 'from-pink-500 to-pink-600',
               },

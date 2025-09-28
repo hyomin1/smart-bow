@@ -3,11 +3,10 @@ venv/
 __pycache__
 weights/
 
-# express
-node_modules/
-mediasoup-gateway
 
 
 .env
+
+yolo*
 
 

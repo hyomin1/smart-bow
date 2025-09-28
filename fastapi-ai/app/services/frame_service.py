@@ -17,15 +17,6 @@ class FrameManager:
         if self.cap:
             self.cap.release()
 
-        # if platform.system() == "Linux":
-        #     gst_pipeline = (
-        #         f"rtspsrc location={self.source} latency=0 ! "
-        #         "rtph264depay ! h264parse ! nvv4l2decoder ! "
-        #         "nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! appsink"
-        #     )  
-        #     self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-        #     print(f"[INFO] {self.name}: 카메라 연결 시도 (GStreamer)")
-        # else:
         self.cap = cv2.VideoCapture(self.source)
      
         self.last_reconnect_time = time.time()

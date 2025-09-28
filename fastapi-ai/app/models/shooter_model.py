@@ -1,15 +1,12 @@
 from ultralytics import YOLO
 import torch
-
-class ArrowModel:
+class ShooterModel:
     def __init__(self):
-        self.model = YOLO("weights/arrow_best.pt")
+        self.model = YOLO("yolov8n-pose.pt")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        print("화살모델 gpu",self.device)
+        print("사수 모델 gpu",self.device)
         self.model.to(self.device)
-       
+  
     
     def predict(self,frame):
-        return self.model(frame,conf=0.36,verbose=False)[0]
-
-    
+        return self.model(frame, conf=0.5, verbose=False)[0]
