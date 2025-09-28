@@ -75,7 +75,7 @@ export default function StreamPage() {
   return (
     <div>
       <div className='flex h-screen'>
-        {/* <div
+        <div
           ref={targetContainerRef}
           className='w-1/2 h-full relative bg-black'
         >
@@ -109,7 +109,7 @@ export default function StreamPage() {
               </>
             )}
           </AnimatePresence>
-        </div> */}
+        </div>
 
         <div className='w-1/2 h-full'>
           <CamWebRTC camId='shooter-test' />
