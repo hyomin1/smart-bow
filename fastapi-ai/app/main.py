@@ -1,13 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+
 
 from app.routers import target, arrow, webrtc
 from app.services.registry import registry
 from app.core import config
 
-import os
 
 app = FastAPI(
     title="Smart Archery",
@@ -40,3 +38,6 @@ async def shutdown_event():
 @app.get("/api")
 async def root():
     return {"message": "Hello World"}
+
+
+

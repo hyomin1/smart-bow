@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import Hls from 'hls.js';
-const CAM = 'cam2';
+
 export default function CamHlsPlayer() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -12,7 +12,7 @@ export default function CamHlsPlayer() {
       maxBufferLength: 5,
       liveSyncDuration: 1,
     });
-    hls.loadSource(`http://localhost:8888/${CAM}/index.m3u8`);
+    hls.loadSource('http://localhost:8000/hls/index.m3u8');
     hls.attachMedia(videoRef.current);
   }, []);
 
@@ -22,8 +22,8 @@ export default function CamHlsPlayer() {
       autoPlay
       playsInline
       muted
-      controls={false}
-      className='h-full w-full object-cover'
+      controls
+      className='h-full w-full object-contain'
     />
   );
 }
