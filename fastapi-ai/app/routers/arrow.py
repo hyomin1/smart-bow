@@ -1,11 +1,12 @@
-import asyncio
+import asyncio, time
 from fastapi import APIRouter, WebSocket
 from starlette.websockets import WebSocketDisconnect
 from app.models.person_model import PersonModel
 from app.utils.transform import get_perspective_transform, transform_points
 from app.services.registry import registry
 from app.services.arrow_registry import arrow_registry
-
+from concurrent.futures import ThreadPoolExecutor
+executor = ThreadPoolExecutor(max_workers=10)
 
 router = APIRouter()
 person_model = PersonModel()
@@ -18,7 +19,6 @@ detect_tasks: dict[str, asyncio.Task] = {}
 
 async def broadcast(cam_id: str, event: dict):
     """cam_id에 연결된 모든 세션에 이벤트 전송"""
-
     dead = []
     arrow_service = arrow_registry.get(cam_id)
     for ws, tw, th in connected_clients.get(cam_id, set()):
@@ -40,17 +40,18 @@ async def broadcast(cam_id: str, event: dict):
 async def detect_loop(cam_id: str, frame_manager):
     """cam_id별 화살/사람 탐지 루프"""
     arrow_service = arrow_registry.get(cam_id)
+    loop = asyncio.get_running_loop()
     try:
         while True:
             frame = frame_manager.get_frame()
             if frame is None:
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(0.001)
                 continue
 
             # 화살 탐지
-            event = await asyncio.to_thread(arrow_service.detect, frame, with_hit=True)
-            if event is None:
-                await asyncio.sleep(0.05)
+            event = await loop.run_in_executor(executor, arrow_service.detect, frame, True)
+            
+            if not event:
                 continue
 
             if event["type"] == "hit":
@@ -66,9 +67,11 @@ async def detect_loop(cam_id: str, frame_manager):
             if event["type"] == "hit":
                 print(f"[{cam_id}] hit 전송")
 
-            await asyncio.sleep(0.05)
+            
     except Exception as e:
         print(f"[{cam_id}] detect loop 에러: {e}")
+
+
 
 
 @router.websocket("/hit/{cam_id}")
@@ -102,3 +105,4 @@ async def arrow_ws(ws: WebSocket, cam_id: str):
         print(f"[{cam_id}] 클라이언트 연결 끊김")
     finally:
         print(f"[{cam_id}] 세션 종료")
+
