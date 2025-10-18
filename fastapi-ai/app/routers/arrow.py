@@ -6,6 +6,7 @@ from app.utils.transform import get_perspective_transform, transform_points
 from app.services.registry import registry
 from app.services.arrow_registry import arrow_registry
 from concurrent.futures import ThreadPoolExecutor
+
 executor = ThreadPoolExecutor(max_workers=10)
 
 router = APIRouter()
@@ -24,10 +25,12 @@ async def broadcast(cam_id: str, event: dict):
     for ws, tw, th in connected_clients.get(cam_id, set()):
         try:
             event_to_send = dict(event)  # 원본 복사
+            print("이벤트", event_to_send)
             if event["type"] == "hit" and arrow_service.target_polygon is not None:
                 M, _ = get_perspective_transform(arrow_service.target_polygon, tw, th)
-                corrected_hit = transform_points([event["hit_tip"]], M)[0]
-                event_to_send["corrected_hit"] = corrected_hit
+                corrected_hit = transform_points([event["tip"]], M)[0]
+                event_to_send["tip"] = corrected_hit
+                print(f"[broadcast] 원근 변환 적용: {corrected_hit}")
             await ws.send_json(event_to_send)
         except Exception:
             dead.append((ws, tw, th))
@@ -49,9 +52,12 @@ async def detect_loop(cam_id: str, frame_manager):
                 continue
 
             # 화살 탐지
-            event = await loop.run_in_executor(executor, arrow_service.detect, frame, True)
-            
+            event = await loop.run_in_executor(
+                executor, arrow_service.detect, frame, True
+            )
             if not event:
+                continue
+            if event["type"] == "arrow" and event["tip"] is None:
                 continue
 
             if event["type"] == "hit":
@@ -62,16 +68,13 @@ async def detect_loop(cam_id: str, frame_manager):
                     await asyncio.sleep(30)
                     continue
 
-            # hit 이벤트 전송
-            await broadcast(cam_id, event)
+                # hit 이벤트 전송
+                await broadcast(cam_id, event)
             if event["type"] == "hit":
                 print(f"[{cam_id}] hit 전송")
 
-            
     except Exception as e:
         print(f"[{cam_id}] detect loop 에러: {e}")
-
-
 
 
 @router.websocket("/hit/{cam_id}")
@@ -105,4 +108,3 @@ async def arrow_ws(ws: WebSocket, cam_id: str):
         print(f"[{cam_id}] 클라이언트 연결 끊김")
     finally:
         print(f"[{cam_id}] 세션 종료")
-
