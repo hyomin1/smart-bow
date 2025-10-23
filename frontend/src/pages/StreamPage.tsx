@@ -3,14 +3,11 @@ import { useParams } from 'react-router-dom';
 import TargetOverlayView from '../components/TargetOverlayView';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import BBoxOverlay from '../components/BBoxOverlay';
 
 type Hit = { x: number; y: number };
 type Size = { width: number; height: number };
-type BBox = [number, number, number, number] | null;
 export default function StreamPage() {
   const [hit, setHit] = useState<Hit | null>(null);
-  const [bbox, setBBox] = useState<BBox>(null);
   const targetContainerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<Size>();
   const { camId } = useParams();
@@ -52,16 +49,9 @@ export default function StreamPage() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log(data);
-      if (data.type === 'arrow') {
-        if (data.bbox) {
-          setBBox(data.bbox); // bbox 있으면 저장
-        } else {
-          setBBox(null); // bbox 없으면 제거
-        }
-      }
 
-      if (data.type === 'hit' && data.corrected_hit) {
-        const [x, y] = data.corrected_hit;
+      if (data.type === 'hit' && data.tip) {
+        const [x, y] = data.tip;
         setHit({ x, y });
       }
     };
@@ -91,9 +81,7 @@ export default function StreamPage() {
           className='w-1/2 h-full relative bg-black'
         >
           <CamWebRTC camId={camId} />
-          {bbox && size && (
-            <BBoxOverlay bbox={bbox} width={size.width} height={size.height} />
-          )}
+
           <AnimatePresence>
             {hit && (
               <>
