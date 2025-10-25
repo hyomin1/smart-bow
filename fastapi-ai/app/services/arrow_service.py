@@ -8,7 +8,7 @@ from app.services.target_service import TargetService
 
 
 class ArrowService:
-    def __init__(self, buffer_size=20, cooldown_sec=3.0):
+    def __init__(self, buffer_size=10, cooldown_sec=3.0):
         self.model = ArrowModel()
         self.person_model = PersonModel()
         self.tracking_buffer = deque(maxlen=buffer_size)
@@ -47,10 +47,10 @@ class ArrowService:
 
         last_y = self.tracking_buffer[-1][1]
         y_diff = abs(tip[1] - last_y)
-
+        # print(f"현재 tip y={tip[1]}, 버퍼 마지막 y={last_y}, 차이={y_diff}")
         if y_diff < threshold:
 
-            print("판정되지만 변화량 적음", tip)
+            # print("판정되지만 변화량 적음", tip)
             return True
 
         return False
@@ -140,38 +140,52 @@ class ArrowService:
             )
 
         cv2.imwrite(save_path, vis_frame)
-        print(f"[시각화] 저장됨: {save_path}")
 
     def _find_hit_point(self):
         buffer_len = len(self.tracking_buffer)
-        if buffer_len < 2:
+        if buffer_len <= 2:
             return None
-
-        if buffer_len == 2:
-            last = self.tracking_buffer[-1]
-            return [float(last[0]), float(last[1])]
 
         y_coords = [data[1] for data in self.tracking_buffer]
 
         for i in range(1, len(y_coords) - 1):
             if y_coords[i + 1] < y_coords[i]:
                 data = self.tracking_buffer[i]
-                print("화살 적중 변곡점 발견")
+                # print("화살 적중 변곡점 발견")
                 return [float(data[0]), float(data[1])]
 
         last = self.tracking_buffer[-1]
-        print("변곡점 없음 적중 x, 마지막 좌표")
+        last_point = [float(last[0]), float(last[1])]
+
+        if self.target_polygon is None:
+            return last_point
+
+        result = cv2.pointPolygonTest(self.target_polygon, last_point, False)
+
+        #  1. 마지막 좌표가 과녁 내부이고 y가 870 이상이면 y를 910으로 수정
+        if result >= 0 and last_point[1] >= 870:
+            return [float(last[0]), 925.0]
+
+        # 2. 마지막 좌표가 과녁 내부
+        if result >= 0:
+            return last_point
+
+        # 3. 마지막 좌표가 과녁 밖 - 버퍼에서 과녁 내부 좌표 찾기
+        for data in self.tracking_buffer:
+            point = [float(data[0]), float(data[1])]
+            result = cv2.pointPolygonTest(self.target_polygon, point, False)
+            if result >= 0:
+                return point
+
+        # 4. 버퍼에 과녁 내부 좌표가 하나도 없음 - 마지막 좌표 반환
         return [float(last[0]), float(last[1])]
 
     def detect(self, frame, with_hit=True):
-        # start_time = time.time()
 
         if self.target_polygon is None:
             self.update_target_polygon(frame)
 
         results = self.model.predict(frame)
-        # infer_time = time.time() - start_time
-        # print(f"[YOLO] 추론시간 {infer_time*1000:.1f}ms  ({1/infer_time:.1f} FPS)")
         now = time.time()
 
         event = {"type": "arrow", "tip": None, "bbox": None}
@@ -199,18 +213,18 @@ class ArrowService:
                 last_time = self.tracking_buffer[-1][2]
                 elapsed = now - last_time
 
-                if elapsed > 1.0:  # 마지막 탐지 이후 2초동안 안들어오면 판단 하기
-                    print(
-                        f"버퍼 길이 {len(self.tracking_buffer)}, {self.tracking_buffer}"
-                    )
-                    if len(self.tracking_buffer) == 1:
+                if elapsed > 1.0:  # 마지막 탐지 이후 1초동안 안들어오면 판단 하기
+                    # print(
+                    #     f"버퍼 길이 {len(self.tracking_buffer)}, {self.tracking_buffer}"
+                    # )
+                    if len(self.tracking_buffer) <= 2:
                         self.tracking_buffer.clear()
                         return event
                     # self.visualize_buffer(frame, f"buffer_vis_{int(now)}.jpg")
-                    # 판단 로직 추가
 
+                    # hit
                     hit_point = self._find_hit_point()
-                    print("hit_point", hit_point)
+                    # print("hit_point", hit_point)
                     if hit_point is not None:
                         event = {"type": "hit", "tip": hit_point, "bbox": None}
                     else:

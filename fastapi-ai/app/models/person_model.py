@@ -2,7 +2,7 @@ from ultralytics import YOLO
 import torch
 class PersonModel:
     def __init__(self):
-        self.model = YOLO("/weights/yolov8n.pt")
+        self.model = YOLO("weights/yolov8n.pt")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print("사람모델 gpu",self.device)
         self.model.to(self.device)

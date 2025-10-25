@@ -3,9 +3,10 @@ import { api } from '../api/axios';
 
 interface Props {
   camId: string;
+  cover?: boolean;
 }
 
-export default function CamWebRTC({ camId }: Props) {
+export default function CamWebRTC({ camId, cover }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     //const pc = new RTCPeerConnection();
@@ -19,27 +20,6 @@ export default function CamWebRTC({ camId }: Props) {
         },
       ],
     });
-
-    // setInterval(async () => {
-    //   const stats = await pc.getStats();
-    //   stats.forEach((report) => {
-    //     if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
-    //       console.log(
-    //         '비트레이트:',
-    //         Math.round((report.bytesReceived * 8) / 1024 / 1024),
-    //         'Mbps'
-    //       );
-    //       console.log('FPS:', report.framesPerSecond);
-    //       console.log('패킷 손실:', report.packetsLost);
-    //       console.log('코덱 ID:', report.codecId);
-    //     }
-
-    //     // 코덱 상세 정보
-    //     if (report.type === 'codec' && report.mimeType.includes('video')) {
-    //       console.log('코덱 정보:', report.mimeType, report.sdpFmtpLine);
-    //     }
-    //   });
-    // }, 2000);
 
     // 서버에서 오는 스트림 붙이기
     pc.oniceconnectionstatechange = () => {
@@ -92,7 +72,9 @@ export default function CamWebRTC({ camId }: Props) {
       playsInline
       muted
       controls
-      className='w-full h-full bg-black object-contain'
+      className={`w-full h-full bg-black ${
+        cover ? 'object-cover' : 'object-contain'
+      }`}
     />
   );
 }

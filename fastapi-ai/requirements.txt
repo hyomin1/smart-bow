@@ -35,8 +35,6 @@ nvidia-cuda-runtime-cu13==0.0.0a0
 onnx==1.19.0
 onnxruntime-gpu==1.23.0
 onnxslim==0.1.71
-opencv-python==4.12.0.88
-opencv-python-headless==4.12.0.88
 packaging==25.0
 pillow==11.3.0
 polars==1.33.1
@@ -64,9 +62,6 @@ tensorrt==10.13.3.9
 tensorrt_cu13==10.13.3.9
 tensorrt_cu13_bindings==10.13.3.9
 tensorrt_cu13_libs==10.13.3.9
-torch==2.8.0+cu126
-torchaudio==2.8.0+cu126
-torchvision==0.23.0
 typing-inspection==0.4.1
 typing_extensions==4.15.0
 ultralytics==8.3.197
