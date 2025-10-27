@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:nightly-cuda13.0-cudnn9-devel
+FROM nvcr.io/nvidia/pytorch:24.10-py3
 
 WORKDIR /smartbow
 

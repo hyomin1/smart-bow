@@ -71,7 +71,6 @@ export default function CamWebRTC({ camId, cover }: Props) {
       autoPlay
       playsInline
       muted
-      controls
       className={`w-full h-full bg-black ${
         cover ? 'object-cover' : 'object-contain'
       }`}

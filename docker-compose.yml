@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 services:
   smartbow:
     build:
@@ -6,7 +6,7 @@ services:
       dockerfile: fastapi-ai/Dockerfile
     container_name: smartbow
     ports:
-      - '8000:8000'
+      - "8000:8000"
     env_file:
       - ./fastapi-ai/.env
     volumes:
@@ -18,4 +18,14 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    restart: always
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cf-tunnel
+    command: tunnel run a5be7fc3-ee0d-40fc-8ff4-9cf3e03fb490
+    volumes:
+      - ~/.cloudflared:/root/.cloudflare
+    depends_on:
+      - smartbow
     restart: always

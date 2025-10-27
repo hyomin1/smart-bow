@@ -220,7 +220,7 @@ class ArrowService:
                     if len(self.tracking_buffer) <= 2:
                         self.tracking_buffer.clear()
                         return event
-                    # self.visualize_buffer(frame, f"buffer_vis_{int(now)}.jpg")
+                    self.visualize_buffer(frame, f"buffer_vis_{int(now)}.jpg")
 
                     # hit
                     hit_point = self._find_hit_point()

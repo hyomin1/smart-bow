@@ -55,9 +55,11 @@ class FrameManager:
         frame = self.latest_frame
         if self.name.startswith("target"):
             h, w = frame.shape[:2]
-            x_cut_left = 200
-            x_cut_right = 100
-            frame = frame[:, x_cut_left : w - x_cut_right]
+            x_cut_left = 420
+            x_cut_right = 200
+            y_cut_bottom = 200
+            
+            frame = frame[: h - y_cut_bottom, x_cut_left : w - x_cut_right]
 
         elif self.name == "shooter1":
             h, w = frame.shape[:2]

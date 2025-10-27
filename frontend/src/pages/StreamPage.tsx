@@ -4,7 +4,7 @@ import TargetOverlayView from '../components/TargetOverlayView';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-type Hit = { x: number; y: number; outside?: boolean };
+type Hit = { x: number; y: number; };
 type Size = { width: number; height: number };
 export default function StreamPage() {
   const [hit, setHit] = useState<Hit | null>(null);
@@ -42,9 +42,7 @@ export default function StreamPage() {
     const ws = new WebSocket(
       `${
         import.meta.env.VITE_WEBSOCKET_URL
-      }hit/${camId}?tw=${targetW}&th=${targetH}&sw=${size.width}&sh=${
-        size.height
-      }`
+      }hit/${camId}?tw=${targetW}&th=${targetH}`
     );
     ws.onopen = () => console.log('WebSocket opened');
 
@@ -55,7 +53,7 @@ export default function StreamPage() {
       if (data.type === 'hit' && data.tip) {
         const [x, y] = data.tip;
 
-        setHit({ x, y, outside: data.outside });
+        setHit({ x, y });
       }
     };
 
@@ -83,7 +81,7 @@ export default function StreamPage() {
           ref={targetContainerRef}
           className='w-1/2 h-full relative bg-black'
         >
-          <CamWebRTC camId={camId} cover />
+          <CamWebRTC camId={camId}  />
 
           <AnimatePresence>
             {hit && (
@@ -109,8 +107,6 @@ export default function StreamPage() {
                     hit={hit}
                     targetW={targetW}
                     targetH={targetH}
-                    screenW={size?.width || 1920}
-                    screenH={size?.height || 1080}
                   />
                 </motion.div>
               </>
