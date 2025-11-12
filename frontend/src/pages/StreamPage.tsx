@@ -1,18 +1,21 @@
 import CamWebRTC from '../components/CamWebRTC';
 import { useParams } from 'react-router-dom';
 import TargetOverlayView from '../components/TargetOverlayView';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-type Hit = { x: number; y: number; };
+type Hit = { x: number; y: number; inside: boolean };
 type Size = { width: number; height: number };
 export default function StreamPage() {
   const [hit, setHit] = useState<Hit | null>(null);
   const targetContainerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<Size>();
   const { camId } = useParams();
+  const [polygon, setPolygon] = useState<number[][] | null>(null);
+  const [frameSize, setFrameSize] = useState<{ w: number; h: number } | null>(
+    null
+  );
 
-  // 🔹 사이즈 측정
   useLayoutEffect(() => {
     const updateSize = () => {
       if (targetContainerRef.current) {
@@ -28,32 +31,28 @@ export default function StreamPage() {
     return () => window.removeEventListener('resize', updateSize);
   }, [size]);
 
-  const { targetW, targetH } = useMemo(() => {
-    if (!size) return { targetW: 400, targetH: 400 };
-    return {
-      targetW: Math.round(size.width * 0.35),
-      targetH: Math.round(size.height * 0.5),
-    };
-  }, [size]);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // 🔹 WebSocket
   useEffect(() => {
     if (!size) return;
     const ws = new WebSocket(
-      `${
-        import.meta.env.VITE_WEBSOCKET_URL
-      }hit/${camId}?tw=${targetW}&th=${targetH}`
+      `${import.meta.env.VITE_WEBSOCKET_URL}hit/${camId}`
     );
     ws.onopen = () => console.log('WebSocket opened');
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log(data);
-
+      console.log('data', data);
+      if (data.type === 'polygon') {
+        const [w, h] = data.frame_size;
+        setFrameSize({ w, h });
+        setPolygon(data.points);
+      }
       if (data.type === 'hit' && data.tip) {
         const [x, y] = data.tip;
+        const inside = data.inside;
 
-        setHit({ x, y });
+        setHit({ x, y, inside });
       }
     };
 
@@ -61,7 +60,7 @@ export default function StreamPage() {
     ws.onerror = (err) => console.error('WebSocket error', err);
 
     return () => ws.close();
-  }, [camId, size, targetW, targetH]);
+  }, [camId, size]);
 
   useEffect(() => {
     if (hit) {
@@ -73,7 +72,7 @@ export default function StreamPage() {
   if (!camId) {
     return <span>잘못된 카메라 경로입니다</span>;
   }
-
+  console.log('frame', frameSize);
   return (
     <div>
       <div className='flex h-screen'>
@@ -81,10 +80,10 @@ export default function StreamPage() {
           ref={targetContainerRef}
           className='w-1/2 h-full relative bg-black'
         >
-          <CamWebRTC camId={camId}  />
+          <CamWebRTC camId={camId} ref={videoRef} />
 
           <AnimatePresence>
-            {hit && (
+            {hit && frameSize && (
               <>
                 <motion.div
                   key='overlay-bg'
@@ -105,8 +104,8 @@ export default function StreamPage() {
                 >
                   <TargetOverlayView
                     hit={hit}
-                    targetW={targetW}
-                    targetH={targetH}
+                    frameSize={frameSize}
+                    polygon={polygon}
                   />
                 </motion.div>
               </>

@@ -31,7 +31,7 @@ class ArrowModel:
 
         # 설정 캐싱
         self.imgsz = 1280
-        self.conf = 0.7
+        self.conf = 0.75
         self.iou = 0.6  # 0.5 → 0.6 (NMS 빠르게)
 
     def predict(self, frame):

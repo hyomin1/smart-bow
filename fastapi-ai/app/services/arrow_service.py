@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import time
+import os
+import datetime
 from collections import deque
 from app.models.yolo_arrow import ArrowModel
 from app.models.person_model import PersonModel
@@ -57,7 +59,7 @@ class ArrowService:
 
     def _should_add_to_buffer(self, tip):
         if self._isEmpty():
-            return True
+            return True        
 
         is_small_change = self._is_y_change_too_small(tip)
 
@@ -65,81 +67,77 @@ class ArrowService:
             return False
 
         return True
+    def _is_false_positive(self, threshold_total=25, threshold_avg=3):
+        if len(self.tracking_buffer) < 3:
+            return True
 
-    def visualize_buffer(self, frame, save_path="buffer_visualization.jpg"):
+        coords = [(d[0], d[1]) for d in self.tracking_buffer]
+        total_dist = 0
+        for i in range(1, len(coords)):
+            dx = coords[i][0] - coords[i - 1][0]
+            dy = coords[i][1] - coords[i - 1][1]
+            total_dist += (dx**2 + dy**2) ** 0.5
+
+        avg_dist = total_dist / len(coords)
+        print(f"[total_move={total_dist:.1f}px, avg_move={avg_dist:.1f}px]")
+
+        if total_dist < threshold_total or avg_dist < threshold_avg:
+            print("정지 오탐 감지됨 — hit 무효 처리")
+            return True
+
+        return False
+
+    def visualize_buffer(self, frame, base_dir="/home/gwandugjung/workspace/data"):
+        """버퍼에 저장된 실제 화살 crop을 복원해서 그리기"""
         if self._isEmpty():
             return
 
         vis_frame = frame.copy()
 
-        # 적중 지점 미리 찾기
         hit_point = self._find_hit_point()
 
         for i, data in enumerate(self.tracking_buffer):
-            if len(data) == 7:  # bbox 정보 있음
-                x, y, t, x1, y1, x2, y2 = data
+            if len(data) == 9:  # crop 포함된 버전
+                x, y, t, x1, y1, x2, y2, arrow_crop, confidence = data
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
-                # 적중 지점이면 빨간색으로 강조
-                is_hit_point = False
-                if hit_point is not None:
-                    if abs(x - hit_point[0]) < 1 and abs(y - hit_point[1]) < 1:
-                        is_hit_point = True
+                # 🔥 실제 화살 영상 복원 (bbox 안에 다시 붙이기)
+                h, w = arrow_crop.shape[:2]
+                vis_frame[y1:y1+h, x1:x1+w] = arrow_crop
 
-                if is_hit_point:
-                    color = (0, 0, 255)  # 빨간색
-                    thickness = 4
-                else:
-                    alpha = (i + 1) / len(self.tracking_buffer)
-                    color = (0, int(255 * alpha), int(255 * (1 - alpha)))
-                    thickness = 2
+                # bbox 색상
+                alpha = (i + 1) / len(self.tracking_buffer)
+                color = (0, int(255 * alpha), int(255 * (1 - alpha)))
 
-                # bbox 그리기
-                cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, thickness)
-                cv2.putText(
-                    vis_frame,
-                    str(i),
-                    (x1, y1 - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    color,
-                    2,
-                )
+                # bbox 테두리
+                cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(vis_frame, str(i), (x1, y1 - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                
+                cv2.putText(vis_frame, f"{confidence:.2f}", (x1, y2 + 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+                cv2.circle(vis_frame, (int(x), int(y)), 4, color, -1)
 
-                # tip 위치에 작은 원 표시
-                cv2.circle(vis_frame, (int(x), int(y)), 3, color, -1)
-
-            else:  # 기존 데이터 (x, y, t)
-                x, y, t = data
-                cv2.circle(vis_frame, (int(x), int(y)), 5, (0, 255, 0), -1)
-
-        # 적중 지점에 큰 원과 텍스트 표시
+        # 🎯 HIT 표시
         if hit_point is not None:
             hit_x, hit_y = int(hit_point[0]), int(hit_point[1])
-            cv2.circle(vis_frame, (hit_x, hit_y), 15, (0, 0, 255), 3)  # 큰 원
-            cv2.circle(vis_frame, (hit_x, hit_y), 5, (0, 0, 255), -1)  # 중심점
-            cv2.putText(
-                vis_frame,
-                "HIT",
-                (hit_x + 20, hit_y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1.0,
-                (0, 0, 255),
-                3,
-            )
+            cv2.circle(vis_frame, (hit_x, hit_y), 15, (0, 0, 255), 3)
+            cv2.circle(vis_frame, (hit_x, hit_y), 5, (0, 0, 255), -1)
+            cv2.putText(vis_frame, "HIT", (hit_x + 20, hit_y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+            cv2.putText(vis_frame, f"({hit_x}, {hit_y})", (hit_x + 20, hit_y + 25),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            
+        
+        now = datetime.datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H-%M-%S")
+        save_dir = os.path.join(base_dir, date_str)
+        os.makedirs(save_dir, exist_ok=True)
 
-            # 좌표 표시
-            cv2.putText(
-                vis_frame,
-                f"({hit_x}, {hit_y})",
-                (hit_x + 20, hit_y + 25),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (0, 0, 255),
-                2,
-            )
-
+        save_path = os.path.join(save_dir, f"{time_str}.jpg")
         cv2.imwrite(save_path, vis_frame)
+
 
     def _find_hit_point(self):
         buffer_len = len(self.tracking_buffer)
@@ -163,8 +161,8 @@ class ArrowService:
         result = cv2.pointPolygonTest(self.target_polygon, last_point, False)
 
         #  1. 마지막 좌표가 과녁 내부이고 y가 870 이상이면 y를 910으로 수정
-        if result >= 0 and last_point[1] >= 870:
-            return [float(last[0]), 925.0]
+        # if result >= 0 and last_point[1] >= 870:
+        #     return [float(last[0]), 925.0]
 
         # 2. 마지막 좌표가 과녁 내부
         if result >= 0:
@@ -181,14 +179,21 @@ class ArrowService:
         return [float(last[0]), float(last[1])]
 
     def detect(self, frame, with_hit=True):
+        now = time.time()
+
+        if now - self.last_hit_time < self.cooldown_sec:
+            return {"type": "cooldown", "tip":None, "bbox":None}
 
         if self.target_polygon is None:
             self.update_target_polygon(frame)
 
+           
+        #start = time.time()
         results = self.model.predict(frame)
-        now = time.time()
-
+        #inference_time = time.time() - start
+        #print(f"[YOLO 추론] {inference_time*1000:.1f}ms (FPS: {1/inference_time:.1f})")
         event = {"type": "arrow", "tip": None, "bbox": None}
+
         if results.boxes is not None and len(results.boxes) > 0:
             conf = results.boxes.conf.cpu().numpy()
             best_conf_idx = int(np.argmax(conf))
@@ -196,12 +201,14 @@ class ArrowService:
             x1, y1, x2, y2 = map(int, xyxy)
             tip = self.leading_tip_from_bbox(xyxy)
 
-            should_add = self._should_add_to_buffer(tip)
+            
 
-            if should_add:
-                self.tracking_buffer.append(
-                    (float(tip[0]), float(tip[1]), now, x1, y1, x2, y2)
-                )
+           
+            arrow_crop = frame[y1:y2, x1:x2].copy()
+            confidence = float(conf[best_conf_idx])
+            self.tracking_buffer.append(
+                (float(tip[0]), float(tip[1]), now, x1, y1, x2, y2, arrow_crop, confidence)
+            )
 
             self.last_box = (x1, y1, x2, y2)
             event = {"type": "arrow", "tip": tip, "bbox": (x1, y1, x2, y2)}
@@ -214,19 +221,34 @@ class ArrowService:
                 elapsed = now - last_time
 
                 if elapsed > 1.0:  # 마지막 탐지 이후 1초동안 안들어오면 판단 하기
-                    # print(
-                    #     f"버퍼 길이 {len(self.tracking_buffer)}, {self.tracking_buffer}"
-                    # )
+                    print(
+                         f"버퍼 길이 {len(self.tracking_buffer)}, {self.tracking_buffer}"
+                    )
                     if len(self.tracking_buffer) <= 2:
                         self.tracking_buffer.clear()
                         return event
-                    self.visualize_buffer(frame, f"buffer_vis_{int(now)}.jpg")
+
+                    if self._is_false_positive():
+                        self.tracking_buffer.clear()
+                        return event
+                        
+                    self.visualize_buffer(frame)
 
                     # hit
                     hit_point = self._find_hit_point()
                     # print("hit_point", hit_point)
                     if hit_point is not None:
-                        event = {"type": "hit", "tip": hit_point, "bbox": None}
+                        self.last_hit_time = now
+                        if self.target_polygon is not None:
+                            inside = (
+                                cv2.pointPolygonTest(
+                                    self.target_polygon, hit_point, False
+                                )
+                                >= 0
+                            )
+                        else:
+                            inside = False
+                        event = {"type": "hit", "tip": hit_point, "bbox": None, "inside":inside}
                     else:
                         event = {
                             "type": "arrow",

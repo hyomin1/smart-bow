@@ -55,9 +55,9 @@ class FrameManager:
         frame = self.latest_frame
         if self.name.startswith("target"):
             h, w = frame.shape[:2]
-            x_cut_left = 420
-            x_cut_right = 200
-            y_cut_bottom = 200
+            x_cut_left = 500
+            x_cut_right = 250
+            y_cut_bottom = 150
             
             frame = frame[: h - y_cut_bottom, x_cut_left : w - x_cut_right]
 

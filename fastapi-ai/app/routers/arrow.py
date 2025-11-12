@@ -12,8 +12,8 @@ executor = ThreadPoolExecutor(max_workers=10)
 router = APIRouter()
 person_model = PersonModel()
 
-# cam_id별 연결된 클라이언트 세션 저장 (ws, tw, th)
-connected_clients: dict[str, set[tuple[WebSocket, int, int]]] = {}
+# cam_id별 연결된 클라이언트 세션 저장
+connected_clients: dict[str, set[WebSocket]] = {}
 # cam_id별 detect loop task
 detect_tasks: dict[str, asyncio.Task] = {}
 
@@ -21,19 +21,16 @@ detect_tasks: dict[str, asyncio.Task] = {}
 async def broadcast(cam_id: str, event: dict):
     """cam_id에 연결된 모든 세션에 이벤트 전송"""
     dead = []
-    arrow_service = arrow_registry.get(cam_id)
-    for ws, tw, th in connected_clients.get(cam_id, set()):
+    for ws in connected_clients.get(cam_id, set()):
         try:
-            event_to_send = dict(event)  # 원본 복사
-          
-            if event["type"] == "hit" and arrow_service.target_polygon is not None:
-                M, _ = get_perspective_transform(arrow_service.target_polygon, tw, th)
-                corrected_hit = transform_points([event["tip"]], M)[0]
-                event_to_send["tip"] = corrected_hit
-                print(f"[broadcast] 원근 변환 적용: {corrected_hit}")
-            await ws.send_json(event_to_send)
+            # if event["type"] == "hit" and arrow_service.target_polygon is not None:
+            #     M, _ = get_perspective_transform(arrow_service.target_polygon, tw, th)
+            #     corrected_hit = transform_points([event["tip"]], M)[0]
+            #     event_to_send["tip"] = corrected_hit
+            #     print(f"[broadcast] 원근 변환 적용: {corrected_hit}")
+            await ws.send_json(event)
         except Exception:
-            dead.append((ws, tw, th))
+            dead.append(ws)
 
     # 끊긴 세션 제거
     for item in dead:
@@ -44,7 +41,9 @@ async def detect_loop(cam_id: str, frame_manager):
     """cam_id별 화살/사람 탐지 루프"""
     arrow_service = arrow_registry.get(cam_id)
     loop = asyncio.get_running_loop()
+
     last_frame_id = None
+    polygon_sent = False
     try:
         while True:
             frame = frame_manager.get_frame()
@@ -60,6 +59,21 @@ async def detect_loop(cam_id: str, frame_manager):
             event = await loop.run_in_executor(
                 executor, arrow_service.detect, frame, True
             )
+
+            if not polygon_sent and arrow_service.target_polygon is not None:
+                h, w = frame.shape[:2]
+                polygon_data = arrow_service.target_polygon.tolist()
+                await broadcast(
+                    cam_id,
+                    {
+                        "type": "polygon",
+                        "points": polygon_data,
+                        "frame_size": [w, h],
+                    },
+                )
+                polygon_sent = True  # 다시 안 보내도록 설정
+                print(f"[{cam_id}] polygon 전송 완료 ({w}x{h})")
+
             if not event:
                 continue
             if event["type"] == "arrow" and event["tip"] is None:
@@ -86,10 +100,6 @@ async def detect_loop(cam_id: str, frame_manager):
 async def arrow_ws(ws: WebSocket, cam_id: str):
     await ws.accept()
 
-    tw = int(ws.query_params.get("tw", 400))
-    th = int(ws.query_params.get("th", 400))
-   
-
     frame_manager = registry.get_camera(cam_id)
     if not frame_manager:
         await ws.send_json({"error": f"Camera {cam_id} not found"})
@@ -99,7 +109,22 @@ async def arrow_ws(ws: WebSocket, cam_id: str):
     # cam_id별 세션 관리
     if cam_id not in connected_clients:
         connected_clients[cam_id] = set()
-    connected_clients[cam_id].add((ws, tw, th))
+    connected_clients[cam_id].add(ws)
+
+    frame = frame_manager.get_frame()
+    arrow_service = arrow_registry.get(cam_id)
+
+    if frame is not None and arrow_service and arrow_service.target_polygon is not None:
+        h, w = frame.shape[:2]
+        polygon_data = arrow_service.target_polygon.tolist()
+        await ws.send_json(
+            {
+                "type": "polygon",
+                "points": polygon_data,
+                "frame_size": [w, h],
+            }
+        )
+        print(f"[{cam_id}] polygon 전송 완료 ({len(polygon_data)} pts, frame {w}x{h})")
 
     # detect loop이 없으면 새로 시작
     if cam_id not in detect_tasks:
@@ -110,7 +135,7 @@ async def arrow_ws(ws: WebSocket, cam_id: str):
         while True:
             await asyncio.sleep(3600)
     except WebSocketDisconnect:
-        connected_clients[cam_id].remove((ws, tw, th))
+        connected_clients[cam_id].remove(ws)
         print(f"[{cam_id}] 클라이언트 연결 끊김")
     finally:
         print(f"[{cam_id}] 세션 종료")
