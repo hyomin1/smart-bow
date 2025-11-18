@@ -12,12 +12,12 @@ pcs = set()
 
 # 카메라별 PUB 포트 매핑
 CAMERA_PORTS = {
-    "target1": 5551,
-    "target2": 5552,
+    # "target1": 5551,
+    # "target2": 5552,
     "target3": 5553,
-    "target-test": 5554,
+    # "target-test": 5554,
     "shooter1": 5555,
-    "shooter2": 5556,
+    # "shooter2": 5556,
 }
 
 # 카메라별 구독자 관리

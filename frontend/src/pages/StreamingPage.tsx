@@ -229,7 +229,7 @@ export default function StreamingPage() {
                   'inset 0 0 30px rgba(236, 72, 153, 0.2), 0 0 30px rgba(236, 72, 153, 0.3)',
               }}
             >
-              <CamWebRTC camId='shooter1' />
+              <CamWebRTC camId='shooter1' cover />
             </div>
           </div>
         </motion.div>
