@@ -1,4 +1,4 @@
-import asyncio, cv2, numpy as np
+import asyncio, cv2, time
 from aiortc import VideoStreamTrack
 from av import VideoFrame
 
@@ -8,6 +8,8 @@ class CameraVideoTrack(VideoStreamTrack):
         super().__init__()
         self.queue = asyncio.Queue(maxsize=2)
         self.arrow_service = arrow_service
+        self.last_frame_time = 0
+        self.fps_limit = 20
 
     async def push(self, frame):
         if self.queue.full():
@@ -19,6 +21,15 @@ class CameraVideoTrack(VideoStreamTrack):
 
     async def recv(self):
         frame = await self.queue.get()
+
+        now = time.time()
+        elapsed = now - self.last_frame_time
+        target_delay = 1.0 / self.fps_limit
+
+        if elapsed < target_delay:
+            await asyncio.sleep(target_delay - elapsed)
+
+        self.last_frame_time = time.time()
 
         frame = frame.copy()
 

@@ -3,7 +3,7 @@ from collections import deque
 
 
 class ArrowService:
-    def __init__(self, buffer_size=15, idle_sec=2.0, cooldown_sec=5.0):
+    def __init__(self, buffer_size=10, idle_sec=2.0, cooldown_sec=8.0):
         self.tracking_buffer = deque(maxlen=buffer_size)
         self.idle_sec = idle_sec
         self.cooldown_sec = cooldown_sec
