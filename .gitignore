@@ -3,7 +3,7 @@ venv/
 __pycache__
 weights/
 
-
+fastapi-ai/config.py
 
 .env
 
