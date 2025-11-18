@@ -1,6 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import App from './App';
-import StreamPage from './pages/StreamPage';
+import StreamingPage from './pages/StreamingPage';
 import HomePage from './pages/HomePage';
 import { ROUTES } from './../constants/routes';
 
@@ -15,7 +15,7 @@ export const router = createBrowserRouter([
       },
       {
         path: ROUTES.STREAM(),
-        element: <StreamPage />,
+        element: <StreamingPage />,
       },
     ],
   },

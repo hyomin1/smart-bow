@@ -1,23 +1,33 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from aiortc import RTCPeerConnection, RTCSessionDescription
-from app.services.shooter_loop import shooter_loop, detect_tasks as shooter_detect_tasks
-from app.services.video_service import  CameraVideoTrack
-from app.services.registry import registry
+from app.webrtc.video_track import CameraVideoTrack
+from app.webrtc.frame_subscriber import camera_frame_sub
+from arrow_registry import arrow_registry
 
 import asyncio
 
 router = APIRouter()
-pcs = set() 
+pcs = set()
+
+# 카메라별 PUB 포트 매핑
+CAMERA_PORTS = {
+    "target1": 5551,
+    "target2": 5552,
+    "target3": 5553,
+    "target-test": 5554,
+    "shooter1": 5555,
+    "shooter2": 5556,
+}
+
+# 카메라별 구독자 관리
+subscribers = {}  # {cam_id: {"task": Task, "tracks": set()}}
+
 
 @router.post("/offer/{cam_id}")
-async def offer(cam_id,request: Request):
-    frame_manager = registry.get_camera(cam_id)
-    if not frame_manager:
-        return JSONResponse({"detail": "카메라를 찾을 수 없습니다."}, status_code=404)
-    
-    if cam_id.startswith("shooter") and cam_id not in shooter_detect_tasks:
-        shooter_detect_tasks[cam_id] = asyncio.create_task(shooter_loop(cam_id, frame_manager))
+async def offer(cam_id: str, request: Request):
+    if cam_id not in CAMERA_PORTS:
+        return JSONResponse({"detail": f"Unknown camera id: {cam_id}"}, status_code=404)
 
     params = await request.json()
     offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
@@ -25,13 +35,60 @@ async def offer(cam_id,request: Request):
     pc = RTCPeerConnection()
     pcs.add(pc)
 
-    pc.addTrack(CameraVideoTrack(frame_manager, cam_id))
-    
+    # 연결 상태 모니터링
+    @pc.on("connectionstatechange")
+    async def on_connectionstatechange():
+        print(f"[{cam_id}] Connection state: {pc.connectionState}")
+        if pc.connectionState in ["failed", "closed"]:
+            pcs.discard(pc)
+            if cam_id in subscribers and video_track in subscribers[cam_id]["tracks"]:
+                subscribers[cam_id]["tracks"].discard(video_track)
+                print(
+                    f"[{cam_id}] Track removed, remaining: {len(subscribers[cam_id]['tracks'])}"
+                )
+
+                if not subscribers[cam_id]["tracks"]:
+                    subscribers[cam_id]["task"].cancel()
+                    del subscribers[cam_id]
+                    print(f"[{cam_id}] Subscriber task cancelled")
+
+    arrow_service = arrow_registry.get(cam_id)
+    video_track = CameraVideoTrack(arrow_service)
+    pc.addTrack(video_track)
+
+    port = CAMERA_PORTS[cam_id]
+
+    if cam_id not in subscribers:
+        tracks = {video_track}
+        task = asyncio.create_task(camera_frame_sub(tracks, [port]))
+        subscribers[cam_id] = {"task": task, "tracks": tracks}
+        print(f"[ZMQ] NEW subscriber for {cam_id}")
+    else:
+        subscribers[cam_id]["tracks"].add(video_track)
+        print(
+            f"[ZMQ] Added track to existing subscriber for {cam_id}, total tracks: {len(subscribers[cam_id]['tracks'])}"
+        )
 
     await pc.setRemoteDescription(offer)
     answer = await pc.createAnswer()
     await pc.setLocalDescription(answer)
 
-    return JSONResponse(
-        {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
-    )
+    return {
+        "sdp": pc.localDescription.sdp,
+        "type": pc.localDescription.type,
+    }
+
+
+@router.on_event("shutdown")
+async def on_shutdown():
+    """앱 종료 시 정리"""
+    # 모든 구독자 취소
+    for cam_id, sub_info in subscribers.items():
+        sub_info["task"].cancel()
+    subscribers.clear()
+
+    # 모든 PeerConnection 종료
+    coros = [pc.close() for pc in pcs]
+    await asyncio.gather(*coros, return_exceptions=True)
+    pcs.clear()
+    print("[WEBRTC] Cleanup completed")

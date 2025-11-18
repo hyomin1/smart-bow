@@ -1,10 +1,11 @@
-from app.services.arrow_service import ArrowService
+from arrow_service import ArrowService
+
 
 class ArrowServiceRegistry:
     def __init__(self):
         self.services = {}
 
-    def get(self, cam_id: str) -> ArrowService:
+    def get(self, cam_id: str):
         if cam_id not in self.services:
             self.services[cam_id] = ArrowService()
         return self.services[cam_id]
@@ -12,5 +13,12 @@ class ArrowServiceRegistry:
     def remove(self, cam_id: str):
         if cam_id in self.services:
             del self.services[cam_id]
+
+    def clear_all(self):
+        self.services.clear()
+
+    def items(self):
+        return self.services.items()
+
 
 arrow_registry = ArrowServiceRegistry()

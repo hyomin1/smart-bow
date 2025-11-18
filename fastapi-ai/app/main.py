@@ -1,18 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routers import webrtc
 
-from app.routers import target, arrow, webrtc
-from app.services.registry import registry
 from app.core import config
+
+import asyncio
+import platform
 
 
 app = FastAPI(
-    title="Smart Archery",
-    version="0.1.0",
-    description="스마트 국궁"
+    title="SmartBow",
+    version="1.0.0",
+    description="Smart Archery System — WebRTC Signaling + Event Server",
 )
 
+# CORS 설정
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.ALLOW_ORIGINS,
@@ -21,23 +24,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(target.router, prefix="/target", tags=["target"])
-app.include_router(arrow.router, tags=["arrow"])
+# WebRTC 라우터
 app.include_router(webrtc.router, prefix="/webrtc", tags=["webrtc"])
 
 
-@app.on_event("startup")
-async def startup_event():
-    for name, url in config.CAMERA_URLS.items():
-        registry.add_camera(name,url)
+# FastAPI 시작 시 필요한 작업
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    registry.stop_all()
 
 @app.get("/api")
 async def root():
-    return {"message": "Hello World"}
-
-
-
+    return {"message": "SmartBow FastAPI OK"}
