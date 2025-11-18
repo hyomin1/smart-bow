@@ -14,8 +14,8 @@ pcs = set()
 CAMERA_PORTS = {
     # "target1": 5551,
     # "target2": 5552,
-    "target3": 5553,
-    # "target-test": 5554,
+    # "target3": 5553,
+    "target-test": 5554,
     "shooter1": 5555,
     # "shooter2": 5556,
 }

@@ -23,7 +23,7 @@ export default function TargetOverlayView({ hit, polygon, renderRect }: Props) {
   const screenCenterY = renderRect.h / 2;
 
   // 확대 비율
-  const scale = 1.8;
+  const scale = 1.3;
 
   // 확대 + 중앙 이동
   const scaledPolygon = polygon.map(([x, y]) => [

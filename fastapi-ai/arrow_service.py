@@ -56,6 +56,13 @@ class ArrowService:
 
         if event["type"] == "arrow" and event["tip"] is not None:
             tip = event["tip"]
+
+            if self.tracking_buffer:
+                last = self.tracking_buffer[-1]
+                last_x, last_y = last[0], last[1]
+                if (abs(last_x - tip[0]) < 5) and (abs(last_y - tip[1]) < 5):
+                    return
+
             x1, y1, x2, y2 = event["bbox"]
             self.last_bbox = (x1, y1, x2, y2)
 
