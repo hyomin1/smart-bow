@@ -13,25 +13,41 @@ export default function StreamingPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [polygon, setPolygon] = useState<number[][] | null>(null);
 
-  const { send, message, readyState } = useWebSocket(camId || '');
+  // WebSocket 상태
+  const {
+    send,
+    message,
+    readyState,
+    error: wsError,
+    retryCount,
+    manualReconnect,
+  } = useWebSocket(camId || '');
+
+  // WebRTC 상태
+  const [targetCamState, setTargetCamState] =
+    useState<RTCIceConnectionState>('new');
+  const [shooterCamState, setShooterCamState] =
+    useState<RTCIceConnectionState>('new');
+  const [targetCamError, setTargetCamError] = useState<string | null>(null);
+  const [shooterCamError, setShooterCamError] = useState<string | null>(null);
+
   const renderRect = useVideoSize(videoRef);
   const hit = useHit(message);
 
+  // 비디오 크기 전송
   useEffect(() => {
-    if (!renderRect || !camId) return;
-    if (readyState !== WebSocket.OPEN) return;
+    if (!renderRect || !camId || readyState !== WebSocket.OPEN) return;
 
     send({
       type: 'video_size',
       width: renderRect.w,
       height: renderRect.h,
     });
-    return () => {};
   }, [renderRect, camId, send, readyState]);
 
+  // 폴리곤 수신
   useEffect(() => {
     if (!message) return;
-
     if (message.type === 'polygon') {
       setPolygon(message.points);
     }
@@ -47,19 +63,69 @@ export default function StreamingPage() {
     );
   }
 
-  const connectionStatus =
-    readyState === WebSocket.OPEN
-      ? '연결됨'
-      : readyState === WebSocket.CONNECTING
-      ? '연결중'
-      : '연결 끊김';
+  // === 헬퍼 함수들 ===
+  const getWebSocketStatus = () => {
+    if (readyState === WebSocket.OPEN)
+      return { label: '연결됨', color: 'text-green-400' };
+    if (readyState === WebSocket.CONNECTING)
+      return { label: '연결중', color: 'text-yellow-400' };
+    return { label: '연결 끊김', color: 'text-red-400' };
+  };
+
+  const getStateColor = (state: RTCIceConnectionState) => {
+    switch (state) {
+      case 'connected':
+      case 'completed':
+        return 'text-green-400';
+      case 'checking':
+      case 'new':
+        return 'text-yellow-400';
+      case 'disconnected':
+      case 'failed':
+      case 'closed':
+        return 'text-red-400';
+      default:
+        return 'text-gray-400';
+    }
+  };
+
+  const getStateLabel = (state: RTCIceConnectionState) => {
+    switch (state) {
+      case 'connected':
+      case 'completed':
+        return '연결됨';
+      case 'checking':
+        return '연결중';
+      case 'new':
+        return '대기';
+      case 'disconnected':
+        return '끊김';
+      case 'failed':
+        return '실패';
+      case 'closed':
+        return '종료';
+      default:
+        return state;
+    }
+  };
+
+  const isSystemOnline = () => {
+    return (
+      readyState === WebSocket.OPEN &&
+      (targetCamState === 'connected' || targetCamState === 'completed') &&
+      (shooterCamState === 'connected' || shooterCamState === 'completed')
+    );
+  };
+
+  const wsStatus = getWebSocketStatus();
+  const hasError = wsError || targetCamError || shooterCamError;
+  const currentError = wsError || targetCamError || shooterCamError;
 
   return (
     <div className='relative h-screen bg-black overflow-hidden'>
-      {/* Animated background */}
+      {/* Background Effects */}
       <div className='absolute inset-0 bg-gradient-to-br from-purple-950 via-black to-cyan-950 opacity-50' />
 
-      {/* Grid overlay */}
       <div
         className='absolute inset-0 opacity-10'
         style={{
@@ -71,7 +137,6 @@ export default function StreamingPage() {
         }}
       />
 
-      {/* Scanline effect */}
       <motion.div
         className='absolute inset-0 pointer-events-none'
         style={{
@@ -85,13 +150,14 @@ export default function StreamingPage() {
 
       {/* Top HUD Bar */}
       <motion.div
-        className='absolute top-0 left-0 right-0 z-20 h-12 bg-black bg-opacity-60 backdrop-blur-sm border-b border-cyan-500'
+        className='absolute top-0 left-0 right-0 z-20 h-16 bg-black bg-opacity-60 backdrop-blur-sm border-b border-cyan-500'
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
         style={{ boxShadow: '0 0 15px rgba(0, 255, 255, 0.3)' }}
       >
         <div className='flex items-center justify-between h-full px-6'>
+          {/* Left: Title */}
           <div className='flex items-center gap-4'>
             <motion.div
               className='w-2 h-2 rounded-full bg-cyan-400'
@@ -104,41 +170,94 @@ export default function StreamingPage() {
             </span>
           </div>
 
+          {/* Right: Status Info */}
           <div className='flex items-center gap-6'>
+            {/* WebSocket */}
             <div className='flex items-center gap-2'>
-              <span className='text-gray-400 font-mono text-sm'>STATUS:</span>
+              <span className='text-gray-400 font-mono text-xs'>WS:</span>
               <motion.span
-                className={`font-mono text-sm font-bold ${
-                  connectionStatus === '연결됨'
-                    ? 'text-green-400'
-                    : connectionStatus === '연결중'
-                    ? 'text-yellow-400'
-                    : 'text-red-400'
-                }`}
+                className={`font-mono text-xs font-bold ${wsStatus.color}`}
                 animate={{
-                  opacity: connectionStatus === '연결중' ? [0.5, 1, 0.5] : 1,
+                  opacity: wsStatus.label === '연결중' ? [0.5, 1, 0.5] : 1,
                 }}
                 transition={{
                   duration: 1,
-                  repeat: connectionStatus === '연결중' ? Infinity : 0,
+                  repeat: wsStatus.label === '연결중' ? Infinity : 0,
                 }}
               >
-                {connectionStatus}
+                {wsStatus.label}
               </motion.span>
+              {retryCount > 0 && (
+                <span className='text-yellow-400 font-mono text-xs'>
+                  ({retryCount}/5)
+                </span>
+              )}
             </div>
 
+            {/* Target Camera */}
             <div className='flex items-center gap-2'>
-              <span className='text-gray-400 font-mono text-sm'>CAM ID:</span>
-              <span className='text-pink-400 font-mono text-sm font-bold'>
+              <span className='text-gray-400 font-mono text-xs'>TARGET:</span>
+              <span
+                className={`font-mono text-xs font-bold ${getStateColor(
+                  targetCamState
+                )}`}
+              >
+                {getStateLabel(targetCamState)}
+              </span>
+            </div>
+
+            {/* Shooter Camera */}
+            <div className='flex items-center gap-2'>
+              <span className='text-gray-400 font-mono text-xs'>SHOOTER:</span>
+              <span
+                className={`font-mono text-xs font-bold ${getStateColor(
+                  shooterCamState
+                )}`}
+              >
+                {getStateLabel(shooterCamState)}
+              </span>
+            </div>
+
+            {/* Camera ID */}
+            <div className='flex items-center gap-2'>
+              <span className='text-gray-400 font-mono text-xs'>CAM:</span>
+              <span className='text-pink-400 font-mono text-xs font-bold'>
                 {camId}
               </span>
             </div>
           </div>
         </div>
+
+        {/* Error Banner */}
+        {hasError && (
+          <motion.div
+            className='absolute top-full left-0 right-0 bg-red-900 bg-opacity-90 border-b border-red-500 px-6 py-2'
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <span className='text-red-400 font-mono text-sm'>⚠️</span>
+                <span className='text-red-200 font-mono text-sm'>
+                  {currentError}
+                </span>
+              </div>
+              {wsError && retryCount >= 5 && (
+                <button
+                  onClick={manualReconnect}
+                  className='px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-mono text-xs rounded transition-colors'
+                >
+                  수동 재연결
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
       </motion.div>
 
-      {/* Main content */}
-      <div className='flex h-full py-12'>
+      {/* Main Content - Dual Cameras */}
+      <div className='flex h-full pt-16 pb-12'>
+        {/* Target Camera */}
         <motion.div
           className='w-1/2 h-full relative p-3'
           initial={{ x: -100, opacity: 0 }}
@@ -164,7 +283,12 @@ export default function StreamingPage() {
               }}
             >
               <div className='relative w-full h-full'>
-                <CamWebRTC camId={camId} ref={videoRef} />
+                <CamWebRTC
+                  camId={camId}
+                  ref={videoRef}
+                  onError={setTargetCamError}
+                  onConnectionStateChange={setTargetCamState}
+                />
 
                 {hit && polygon && renderRect && (
                   <AnimatePresence>
@@ -198,13 +322,13 @@ export default function StreamingPage() {
           </div>
         </motion.div>
 
-        {/* Divider with glow */}
+        {/* Divider */}
         <div
           className='relative w-1 bg-gradient-to-b from-transparent via-pink-500 to-transparent'
           style={{ boxShadow: '0 0 20px rgba(236, 72, 153, 0.6)' }}
         />
 
-        {/* Right camera - Shooter view */}
+        {/* Shooter Camera */}
         <motion.div
           className='w-1/2 h-full relative p-3'
           initial={{ x: 100, opacity: 0 }}
@@ -229,7 +353,12 @@ export default function StreamingPage() {
                   'inset 0 0 30px rgba(236, 72, 153, 0.2), 0 0 30px rgba(236, 72, 153, 0.3)',
               }}
             >
-              <CamWebRTC camId='shooter1' cover />
+              <CamWebRTC
+                camId='shooter1'
+                cover
+                onError={setShooterCamError}
+                onConnectionStateChange={setShooterCamState}
+              />
             </div>
           </div>
         </motion.div>
@@ -247,11 +376,15 @@ export default function StreamingPage() {
           <div className='flex items-center gap-8'>
             <div className='flex items-center gap-2'>
               <div
-                className='w-2 h-2 bg-green-400 rounded-full animate-pulse'
+                className={`w-2 h-2 rounded-full ${
+                  isSystemOnline()
+                    ? 'bg-green-400 animate-pulse'
+                    : 'bg-yellow-400'
+                }`}
                 style={{ boxShadow: '0 0 10px #4ade80' }}
               />
               <span className='text-gray-400 font-mono text-xs'>
-                SYSTEM ONLINE
+                {isSystemOnline() ? 'SYSTEM ONLINE' : 'SYSTEM INITIALIZING'}
               </span>
             </div>
 
