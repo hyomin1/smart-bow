@@ -1,4 +1,4 @@
-import zmq.asyncio, cv2, numpy as np, asyncio
+import zmq.asyncio, cv2, numpy as np, asyncio, msgpack
 
 
 async def camera_frame_sub(tracks, ports):
@@ -7,7 +7,8 @@ async def camera_frame_sub(tracks, ports):
     sub = ctx.socket(zmq.SUB)
 
     sub.setsockopt(zmq.LINGER, 0)
-    sub.setsockopt(zmq.RCVHWM, 1)
+    sub.setsockopt(zmq.RCVHWM, 2)
+    sub.setsockopt(zmq.CONFLATE, 1)
 
     for port in ports:
         sub.connect(f"tcp://localhost:{port}")
@@ -15,8 +16,11 @@ async def camera_frame_sub(tracks, ports):
 
     try:
         while True:
-            cam_id, jpg = await sub.recv_multipart()
+            data = await sub.recv()
+            msg = msgpack.unpackb(data, raw=False)
 
+            cam_id = msg["cam_id"]
+            jpg = msg["jpeg"]
             np_arr = np.frombuffer(jpg, dtype=np.uint8)
             frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
