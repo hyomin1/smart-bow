@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from subscriber import start_subscriber_thread
 from config import ARROW_INFER_CONFIG, ALLOW_ORIGINS
-from arrow_registry import arrow_registry
-from app.routers import webrtc, ws
+from services.arrow.registry import arrow_registry
+from routers import webrtc, ws
 
 
 import time, threading, asyncio
@@ -42,7 +42,7 @@ def idle_watcher():
         for cam_id, arrow_service in arrow_registry.items():
             try:
                 if arrow_service.is_idle():
-                    hit = arrow_service._find_hit_point()
+                    hit = arrow_service.find_hit_point()
                     if hit is not None:
                         print(f"[HIT] cam={cam_id}, point={hit}")
                         arrow_service.last_hit_time = time.time()

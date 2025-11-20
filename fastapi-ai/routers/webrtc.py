@@ -1,27 +1,19 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from aiortc import RTCPeerConnection, RTCSessionDescription
-from app.webrtc.video_track import CameraVideoTrack
-from app.webrtc.frame_subscriber import camera_frame_sub
-from arrow_registry import arrow_registry
 
+from services.webrtc.frame_subscriber import camera_frame_sub
+from services.webrtc.video_track import CameraVideoTrack
+from services.arrow.registry import arrow_registry
+
+from config import CAMERA_PORTS
 import asyncio
 
 router = APIRouter()
 pcs = set()
 
-# 카메라별 PUB 포트 매핑
-CAMERA_PORTS = {
-    # "target1": 5551,
-    # "target2": 5552,
-    # "target3": 5553,
-    "target-test": 5554,
-    "shooter1": 5555,
-    # "shooter2": 5556,
-}
 
-# 카메라별 구독자 관리
-subscribers = {}  # {cam_id: {"task": Task, "tracks": set()}}
+subscribers = {}
 
 
 @router.post("/offer/{cam_id}")
