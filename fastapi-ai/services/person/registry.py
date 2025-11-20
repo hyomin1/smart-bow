@@ -1,13 +1,13 @@
-from arrow_service import ArrowService
+from .service import PersonService
 
 
-class ArrowServiceRegistry:
+class PersonRegistry:
     def __init__(self):
         self.services = {}
 
     def get(self, cam_id: str):
         if cam_id not in self.services:
-            self.services[cam_id] = ArrowService()
+            self.services[cam_id] = PersonService()
         return self.services[cam_id]
 
     def remove(self, cam_id: str):
@@ -21,4 +21,4 @@ class ArrowServiceRegistry:
         return self.services.items()
 
 
-arrow_registry = ArrowServiceRegistry()
+person_registry = PersonRegistry()
