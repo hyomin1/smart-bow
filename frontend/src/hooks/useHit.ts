@@ -15,7 +15,7 @@ export function useHit(message: WsMessage | null) {
 
   useEffect(() => {
     if (!hit) return;
-    const timer = setTimeout(() => setHit(null), 5000);
+    const timer = setTimeout(() => setHit(null), 6000);
     return () => clearTimeout(timer);
   }, [hit]);
 

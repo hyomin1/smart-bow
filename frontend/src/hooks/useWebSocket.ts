@@ -109,11 +109,11 @@ export function useWebSocket(camId: string) {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       try {
+        console.log('data', data);
         ws.send(JSON.stringify(data));
       } catch {
         setError('메시지 전송 실패');
       }
-      ws.send(JSON.stringify(data));
     } else {
       setError('연결되지 않음');
     }
