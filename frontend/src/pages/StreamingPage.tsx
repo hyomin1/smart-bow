@@ -6,6 +6,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { useVideoSize } from '../hooks/useVideoSize';
 import { useHit } from '../hooks/useHit';
 import TargetOverlayView from '../components/TargetOverlayView';
+import useVisibility from '../hooks/useVisibility';
 
 export default function StreamingPage() {
   const { camId } = useParams<{ camId: string }>();
@@ -13,7 +14,6 @@ export default function StreamingPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [polygon, setPolygon] = useState<number[][] | null>(null);
 
-  // WebSocket 상태
   const {
     send,
     message,
@@ -23,7 +23,6 @@ export default function StreamingPage() {
     manualReconnect,
   } = useWebSocket(camId || '');
 
-  // WebRTC 상태
   const [targetCamState, setTargetCamState] =
     useState<RTCIceConnectionState>('new');
   const [shooterCamState, setShooterCamState] =
@@ -34,7 +33,8 @@ export default function StreamingPage() {
   const renderRect = useVideoSize(videoRef);
   const hit = useHit(message);
 
-  // 비디오 크기 전송
+  const isVisible = useVisibility();
+
   useEffect(() => {
     if (!renderRect || !camId || readyState !== WebSocket.OPEN) return;
 
@@ -45,7 +45,6 @@ export default function StreamingPage() {
     });
   }, [renderRect, camId, send, readyState]);
 
-  // 폴리곤 수신
   useEffect(() => {
     if (!message) return;
     if (message.type === 'polygon') {
@@ -63,7 +62,6 @@ export default function StreamingPage() {
     );
   }
 
-  // === 헬퍼 함수들 ===
   const getWebSocketStatus = () => {
     if (readyState === WebSocket.OPEN)
       return { label: '연결됨', color: 'text-green-400' };
@@ -123,7 +121,6 @@ export default function StreamingPage() {
 
   return (
     <div className='relative h-screen bg-black overflow-hidden'>
-      {/* Background Effects */}
       <div className='absolute inset-0 bg-gradient-to-br from-purple-950 via-black to-cyan-950 opacity-50' />
 
       <div
@@ -144,11 +141,10 @@ export default function StreamingPage() {
             'linear-gradient(0deg, transparent 0%, rgba(0, 255, 255, 0.03) 50%, transparent 100%)',
           backgroundSize: '100% 4px',
         }}
-        animate={{ y: [0, 100] }}
+        animate={isVisible ? { y: [0, 100] } : { y: 0 }}
         transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
       />
 
-      {/* Top HUD Bar */}
       <motion.div
         className='absolute top-0 left-0 right-0 z-20 h-16 bg-black bg-opacity-60 backdrop-blur-sm border-b border-cyan-500'
         initial={{ y: -100 }}
@@ -157,11 +153,10 @@ export default function StreamingPage() {
         style={{ boxShadow: '0 0 15px rgba(0, 255, 255, 0.3)' }}
       >
         <div className='flex items-center justify-between h-full px-6'>
-          {/* Left: Title */}
           <div className='flex items-center gap-4'>
             <motion.div
               className='w-2 h-2 rounded-full bg-cyan-400'
-              animate={{ opacity: [0.3, 1, 0.3] }}
+              animate={isVisible ? { opacity: [0.3, 1, 0.3] } : { opacity: 1 }}
               transition={{ duration: 2, repeat: Infinity }}
               style={{ boxShadow: '0 0 10px #00ffff' }}
             />
@@ -170,9 +165,7 @@ export default function StreamingPage() {
             </span>
           </div>
 
-          {/* Right: Status Info */}
           <div className='flex items-center gap-6'>
-            {/* WebSocket */}
             <div className='flex items-center gap-2'>
               <span className='text-gray-400 font-mono text-xs'>WS:</span>
               <motion.span
@@ -194,7 +187,6 @@ export default function StreamingPage() {
               )}
             </div>
 
-            {/* Target Camera */}
             <div className='flex items-center gap-2'>
               <span className='text-gray-400 font-mono text-xs'>TARGET:</span>
               <span
@@ -206,7 +198,6 @@ export default function StreamingPage() {
               </span>
             </div>
 
-            {/* Shooter Camera */}
             <div className='flex items-center gap-2'>
               <span className='text-gray-400 font-mono text-xs'>SHOOTER:</span>
               <span
@@ -218,7 +209,6 @@ export default function StreamingPage() {
               </span>
             </div>
 
-            {/* Camera ID */}
             <div className='flex items-center gap-2'>
               <span className='text-gray-400 font-mono text-xs'>CAM:</span>
               <span className='text-pink-400 font-mono text-xs font-bold'>
@@ -228,7 +218,6 @@ export default function StreamingPage() {
           </div>
         </div>
 
-        {/* Error Banner */}
         {hasError && (
           <motion.div
             className='absolute top-full left-0 right-0 bg-red-900 bg-opacity-90 border-b border-red-500 px-6 py-2'
@@ -255,9 +244,7 @@ export default function StreamingPage() {
         )}
       </motion.div>
 
-      {/* Main Content - Dual Cameras */}
       <div className='flex h-full pt-16 pb-12'>
-        {/* Target Camera */}
         <motion.div
           className='w-1/2 h-full relative p-3'
           initial={{ x: -100, opacity: 0 }}
@@ -313,6 +300,7 @@ export default function StreamingPage() {
                         hit={hit}
                         polygon={polygon}
                         renderRect={renderRect}
+                        isVisible={isVisible}
                       />
                     </motion.div>
                   </AnimatePresence>
@@ -322,13 +310,11 @@ export default function StreamingPage() {
           </div>
         </motion.div>
 
-        {/* Divider */}
         <div
           className='relative w-1 bg-gradient-to-b from-transparent via-pink-500 to-transparent'
           style={{ boxShadow: '0 0 20px rgba(236, 72, 153, 0.6)' }}
         />
 
-        {/* Shooter Camera */}
         <motion.div
           className='w-1/2 h-full relative p-3'
           initial={{ x: 100, opacity: 0 }}
@@ -364,7 +350,6 @@ export default function StreamingPage() {
         </motion.div>
       </div>
 
-      {/* Bottom HUD Bar */}
       <motion.div
         className='absolute bottom-0 left-0 right-0 z-20 h-12 bg-black bg-opacity-60 backdrop-blur-sm border-t-2 border-pink-500'
         initial={{ y: 100 }}
@@ -398,7 +383,7 @@ export default function StreamingPage() {
               <motion.div
                 key={i}
                 className='w-1 h-4 bg-cyan-400'
-                animate={{ scaleY: [0.5, 1, 0.5] }}
+                animate={isVisible ? { scaleY: [0.5, 1, 0.5] } : { scaleY: 1 }}
                 transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
                 style={{ boxShadow: '0 0 10px rgba(0, 255, 255, 0.5)' }}
               />

@@ -4,9 +4,10 @@ interface Props {
   hit: [number, number];
   polygon: number[][];
   renderRect: { w: number; h: number };
+  isVisible?: boolean;
 }
 
-export default function TargetOverlayView({ hit, polygon, renderRect }: Props) {
+export default function TargetOverlayView({ hit, polygon, renderRect, isVisible = true }: Props) {
   if (!polygon || polygon.length < 4) return null;
 
   const lerp = (p1: number[], p2: number[], t: number) => [
@@ -110,7 +111,7 @@ export default function TargetOverlayView({ hit, polygon, renderRect }: Props) {
         animate={{
           pathLength: 1,
           opacity: 1,
-          strokeWidth: [2, 2.5, 2],
+          strokeWidth: isVisible ? [2, 2.5, 2] : 2,
         }}
         transition={{
           pathLength: { duration: 1.5, ease: 'easeInOut' },
@@ -220,11 +221,11 @@ export default function TargetOverlayView({ hit, polygon, renderRect }: Props) {
             stroke='rgba(255,215,0,0.6)'
             strokeWidth={2}
             initial={{ r: 10, opacity: 0 }}
-            animate={{
-              r: [10, 40, 60],
-              opacity: [0.8, 0.4, 0],
-              strokeWidth: [3, 2, 1],
-            }}
+            animate={
+              isVisible
+                ? { r: [10, 40, 60], opacity: [0.8, 0.4, 0], strokeWidth: [3, 2, 1] }
+                : { r: 10, opacity: 0 }
+            }
             transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
           />
 
@@ -237,10 +238,11 @@ export default function TargetOverlayView({ hit, polygon, renderRect }: Props) {
             stroke='rgba(255,170,0,0.8)'
             strokeWidth={2.5}
             initial={{ r: 10, opacity: 0 }}
-            animate={{
-              r: [10, 35, 50],
-              opacity: [1, 0.5, 0],
-            }}
+            animate={
+              isVisible
+                ? { r: [10, 35, 50], opacity: [1, 0.5, 0] }
+                : { r: 10, opacity: 0 }
+            }
             transition={{
               duration: 1.2,
               repeat: Infinity,
@@ -255,16 +257,17 @@ export default function TargetOverlayView({ hit, polygon, renderRect }: Props) {
             cy={scaledHit[1]}
             r={18}
             fill='url(#hitGradient)'
-            animate={{
-              scale: [1, 1.15, 1],
-              opacity: [0.4, 0.6, 0.4],
-            }}
+            animate={
+              isVisible
+                ? { scale: [1, 1.15, 1], opacity: [0.4, 0.6, 0.4] }
+                : { scale: 1, opacity: 0.4 }
+            }
             transition={{ duration: 1.5, repeat: Infinity }}
           />
 
           {/* 회전하는 크로스헤어 */}
           <motion.g
-            animate={{ rotate: 360 }}
+            animate={isVisible ? { rotate: 360 } : { rotate: 0 }}
             transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
             style={{ transformOrigin: `${scaledHit[0]}px ${scaledHit[1]}px` }}
           >
@@ -315,10 +318,11 @@ export default function TargetOverlayView({ hit, polygon, renderRect }: Props) {
             stroke='#ffaa00'
             strokeWidth={2}
             filter='url(#strongGlow)'
-            animate={{
-              r: [10, 13, 10],
-              opacity: [0.8, 1, 0.8],
-            }}
+            animate={
+              isVisible
+                ? { r: [10, 13, 10], opacity: [0.8, 1, 0.8] }
+                : { r: 12, opacity: 1 }
+            }
             transition={{ duration: 1, repeat: Infinity }}
           />
 

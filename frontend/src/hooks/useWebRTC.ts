@@ -130,7 +130,22 @@ export function useWebRTC({
       pc.addTransceiver('video', { direction: 'recvonly' });
 
       const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
+      console.log('original', offer.sdp);
+      let modifiedSdp = offer.sdp || '';
+      modifiedSdp = modifiedSdp.replace(
+        /(a=rtpmap:96 VP8\/90000\r?\n)/,
+        '$1a=fmtp:96 x-google-max-bitrate=10000;x-google-min-bitrate=3000;x-google-start-bitrate=5000\r\n'
+      );
+      modifiedSdp = modifiedSdp.replace(
+        /(m=video.*\r?\n)/,
+        '$1b=AS:10000\r\nb=TIAS:10000000\r\n'
+      );
+      console.log('Modified SDP:', modifiedSdp);
+      // await pc.setLocalDescription(offer);
+      await pc.setLocalDescription({
+        type: offer.type,
+        sdp: modifiedSdp,
+      });
 
       const resp = await api.post(
         `webrtc/offer/${camId}`,
