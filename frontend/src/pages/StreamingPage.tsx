@@ -208,7 +208,7 @@ export default function StreamingPage() {
               }}
             >
               <CamWebRTC
-                camId='shooter-test'
+                camId='shooter1'
                 cover
                 onError={setShooterCamError}
                 onConnectionStateChange={setShooterCamState}

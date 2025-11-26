@@ -18,10 +18,10 @@ export function useWebSocket(camId: string) {
   const retryTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
   const isManualCloseRef = useRef(false);
-  const url = `${import.meta.env.VITE_WEBSOCKET_URL}hit/${camId}`;
 
   const connect = useCallback(() => {
     if (!camId) return;
+    const url = `${import.meta.env.VITE_WEBSOCKET_URL}hit/${camId}`;
 
     if (wsRef.current) {
       wsRef.current.close();
@@ -39,6 +39,8 @@ export function useWebSocket(camId: string) {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        console.log('✅ WebSocket 연결 성공');
+
         setReadyState(WebSocket.OPEN);
         setError(null);
         reconnectAttemptRef.current = 0;
@@ -57,11 +59,18 @@ export function useWebSocket(camId: string) {
         setError('WebSocket 연결 오류');
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
+        console.log('❌ WebSocket 종료', {
+          code: event.code,
+          reason: event.reason,
+          isManual: isManualCloseRef.current,
+          retryCount: reconnectAttemptRef.current,
+        });
+
         setReadyState(WebSocket.CLOSED);
 
         if (
-          !isManualCloseRef &&
+          !isManualCloseRef.current &&
           reconnectAttemptRef.current < MAX_RETRY_ATTEMPTS
         ) {
           reconnectAttemptRef.current += 1;
@@ -83,7 +92,7 @@ export function useWebSocket(camId: string) {
       setError('WebSocket 연결 오류');
       setReadyState(WebSocket.CLOSED);
     }
-  }, [camId, url]);
+  }, [camId]);
 
   useEffect(() => {
     isManualCloseRef.current = false;
@@ -109,7 +118,6 @@ export function useWebSocket(camId: string) {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       try {
-        console.log('DATA', data);
         ws.send(JSON.stringify(data));
       } catch {
         setError('메시지 전송 실패');
