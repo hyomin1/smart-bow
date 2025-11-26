@@ -34,6 +34,10 @@ export default function HomePage() {
     },
   ];
 
+  const isDev = import.meta.env.VITE_ENV === 'dev';
+
+  const filtered = targets.filter((t) => isDev || t.id !== 'target-test');
+
   return (
     <div className='relative min-h-screen bg-black overflow-hidden'>
       {/* Animated background */}
@@ -123,8 +127,8 @@ export default function HomePage() {
             <div className='w-32 h-1 bg-gradient-to-r from-transparent via-pink-500 to-transparent mx-auto' />
           </motion.div>
 
-          <div className='grid md:grid-cols-2 lg:grid-cols-4 gap-6'>
-            {targets.map((target, index) => (
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6'>
+            {filtered.map((target, index) => (
               <motion.div
                 key={target.id}
                 initial={{ opacity: 0, y: 50 }}
