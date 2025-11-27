@@ -18,14 +18,23 @@ export function useWebSocket(camId: string) {
   const retryTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
   const isManualCloseRef = useRef(false);
+  const isConnectingRef = useRef(false);
 
   const connect = useCallback(() => {
     if (!camId) return;
-    const url = `${import.meta.env.VITE_WEBSOCKET_URL}hit/${camId}`;
-
+    if (isConnectingRef.current) return;
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
     if (wsRef.current) {
-      wsRef.current.close();
+      const oldWs = wsRef.current;
       wsRef.current = null;
+      oldWs.onopen = null;
+      oldWs.onmessage = null;
+      oldWs.onerror = null;
+      oldWs.onclose = null;
+      oldWs.close();
     }
 
     if (reconnectAttemptRef.current >= MAX_RETRY_ATTEMPTS) {
@@ -35,12 +44,15 @@ export function useWebSocket(camId: string) {
     }
 
     try {
+      isConnectingRef.current = true;
+      const url = `${import.meta.env.VITE_WEBSOCKET_URL}hit/${camId}`;
+
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('✅ WebSocket 연결 성공');
-
+        console.log('WebSocket 연결 성공');
+        isConnectingRef.current = false;
         setReadyState(WebSocket.OPEN);
         setError(null);
         reconnectAttemptRef.current = 0;
@@ -56,10 +68,12 @@ export function useWebSocket(camId: string) {
       };
 
       ws.onerror = () => {
+        isConnectingRef.current = false;
         setError('WebSocket 연결 오류');
       };
 
       ws.onclose = (event) => {
+        isConnectingRef.current = false;
         console.log('❌ WebSocket 종료', {
           code: event.code,
           reason: event.reason,
@@ -89,6 +103,7 @@ export function useWebSocket(camId: string) {
         }
       };
     } catch {
+      isConnectingRef.current = false;
       setError('WebSocket 연결 오류');
       setReadyState(WebSocket.CLOSED);
     }
@@ -100,14 +115,19 @@ export function useWebSocket(camId: string) {
 
     return () => {
       isManualCloseRef.current = true;
-
+      isConnectingRef.current = false;
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
       if (wsRef.current) {
-        wsRef.current.close();
+        const ws = wsRef.current;
         wsRef.current = null;
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
+        ws.close();
       }
 
       reconnectAttemptRef.current = 0;

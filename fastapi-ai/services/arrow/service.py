@@ -231,7 +231,7 @@ class ArrowService:
         y_min, y_max = min(y_coords), max(y_coords)
         total_height = y_max - y_min
 
-        if total_height < 15:
+        if total_height < 10:
             self.clear_buffer()
             return None
 

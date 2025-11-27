@@ -10,5 +10,7 @@ fastapi-ai/config.py
 yolo*
 
 
+data/
 
-
+.claude
+CLAUDE.MD

@@ -38,6 +38,8 @@ export default function StreamingPage() {
 
   const isVisible = useVisibility();
 
+  const isDev = import.meta.env.VITE_ENV === 'dev';
+
   useEffect(() => {
     if (!renderRect || !camId || readyState !== WebSocket.OPEN) return;
 
@@ -59,7 +61,7 @@ export default function StreamingPage() {
     return (
       <div className='flex items-center justify-center h-screen bg-black'>
         <span className='text-red-500 text-xl font-mono'>
-          ERROR: INVALID CAMERA PATH
+          유효한 카메라가 아닙니다
         </span>
       </div>
     );
@@ -208,7 +210,7 @@ export default function StreamingPage() {
               }}
             >
               <CamWebRTC
-                camId='shooter1'
+                camId={isDev ? 'shooter-test' : 'shooter1'}
                 cover
                 onError={setShooterCamError}
                 onConnectionStateChange={setShooterCamState}
