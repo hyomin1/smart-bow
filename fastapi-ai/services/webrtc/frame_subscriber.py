@@ -1,4 +1,6 @@
-import zmq.asyncio, cv2, numpy as np, asyncio, msgpack
+import zmq.asyncio, cv2, numpy as np, asyncio, msgpack, logging
+
+logger = logging.getLogger(__name__)
 
 
 async def camera_frame_sub(tracks, ports):
@@ -12,6 +14,7 @@ async def camera_frame_sub(tracks, ports):
 
     for port in ports:
         sub.connect(f"tcp://localhost:{port}")
+        logger.info(f"ZMQ 구독 연결: {port}")
     sub.setsockopt_string(zmq.SUBSCRIBE, "")
 
     try:
@@ -30,17 +33,17 @@ async def camera_frame_sub(tracks, ports):
                 except asyncio.TimeoutError:
                     pass
                 except Exception as e:
-                    print(f"[SUBSCRIBER] Error pushing to track: {e}")
+                    logger.error(f"트랙 push 실패: {e}", exc_info=True)
 
     except asyncio.CancelledError:
-        print("[SUBSCRIBER] Task cancelled")
+        logger.info("ZMQ 구독 작업 취소됨")
         raise
     except Exception as e:
-        print(f"[SUBSCRIBER] Error: {e}")
+        logger.error(f"ZMQ 구독 오류: {e}", exc_info=True)
         import traceback
 
         traceback.print_exc()
     finally:
         sub.close()
         ctx.term()
-        print("[SUBSCRIBER] Cleaned up")
+        logger.info("ZMQ 구독 정리 완료")

@@ -1,0 +1,37 @@
+version: 1
+formatters:
+  standard:
+    format: '%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d — %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+handlers:
+  file_handler:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: standard
+    filename: logs/server.log
+    encoding: utf8
+
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: standard
+
+loggers:
+  uvicorn:
+    handlers: [console, file_handler]
+    level: INFO
+  uvicorn.error:
+    handlers: [console, file_handler]
+    level: INFO
+  uvicorn.access:
+    handlers: [console, file_handler]
+    level: INFO
+  smartbow:
+    handlers: [console, file_handler]
+    level: DEBUG
+    propagate: false
+
+root:
+  handlers: [console, file_handler]
+  level: DEBUG

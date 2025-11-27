@@ -1,6 +1,8 @@
-import time, cv2, numpy as np, os, datetime
+import time, cv2, numpy as np, os, datetime, logging
 from collections import deque
 from config import BASE_DIR
+
+logger = logging.getLogger(__name__)
 
 
 class ArrowService:
@@ -72,8 +74,8 @@ class ArrowService:
             if self.last_frame is not None:
                 try:
                     arrow_crop = self.last_frame[y1:y2, x1:x2].copy()
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"화살 crop 실패: {e}")
 
             self.tracking_buffer.append(
                 (
@@ -95,7 +97,7 @@ class ArrowService:
     def visualize_buffer(self, hit_point):
         if not self.tracking_buffer or self.last_frame is None:
             return
-        print("그린다")
+
         vis_frame = self.last_frame.copy()
 
         for i, data in enumerate(self.tracking_buffer):
@@ -219,8 +221,6 @@ class ArrowService:
         return closest_point
 
     def find_hit_point(self):
-        tips = [(round(x, 1), round(y, 1)) for (x, y, *_rest) in self.tracking_buffer]
-        print(f"판정버퍼 len={len(self.tracking_buffer)}, tips={tips}")
         if len(self.tracking_buffer) < 2:
             self.clear_buffer()
             return None
@@ -245,15 +245,12 @@ class ArrowService:
                     inside = cv2.pointPolygonTest(self.target, raw_hit, False) >= 0
 
                     if inside:
-                        print(f"[HIT-변곡점] 과녁 안: {raw_hit}")
                         return raw_hit
 
                     for data in self.tracking_buffer:
                         px, py = float(data[0]), float(data[1])
                         if cv2.pointPolygonTest(self.target, [px, py], False) >= 0:
-                            print(
-                                f"[HIT-보정] 버퍼에서 과녁 안 좌표 발견: ({px}, {py})"
-                            )
+
                             return [px, py]
 
                         closest_point = self._closest_point_on_polygon(
@@ -276,9 +273,7 @@ class ArrowService:
                                     dx, dy = dx / length, dy / length
                                     closest_x += dx * 35
                                     closest_y += dy * 35
-                            print(
-                                f"[HIT-보정] 가장 가까운 테두리 안쪽: ({closest_x}, {closest_y})"
-                            )
+
                             return [closest_x, closest_y]
                         else:
                             return [x, y]
@@ -290,19 +285,15 @@ class ArrowService:
         raw_hit = [float(x), float(y)]
 
         if self.target is None:
-            print(f"[HIT] raw={raw_hit}")
             return raw_hit
 
         inside = cv2.pointPolygonTest(self.target, raw_hit, False) >= 0
 
         if inside:
-            print(f"[HIT] 마지막 좌표 과녁 안")
             return raw_hit
 
         for data in self.tracking_buffer:
             px, py = float(data[0]), float(data[1])
             if cv2.pointPolygonTest(self.target, [px, py], False) >= 0:
-                print(f"[HIT] 버퍼에서 과녁 안 좌표 발견: ({px}, {py})")
                 return [px, py]
-        print(f"[HIT] 과녁 밖 좌표 그대로 반환")
         return raw_hit

@@ -11,6 +11,7 @@ yolo*
 
 
 data/
+logs/
 
 .claude
 CLAUDE.MD
