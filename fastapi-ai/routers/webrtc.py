@@ -5,6 +5,7 @@ from aiortc import RTCPeerConnection, RTCSessionDescription
 from services.webrtc.frame_subscriber import camera_frame_sub
 from services.webrtc.video_track import CameraVideoTrack
 from services.arrow.registry import arrow_registry
+from services.person.registry import person_registry
 
 from config import CAMERA_PORTS
 import asyncio
@@ -45,7 +46,8 @@ async def offer(cam_id: str, request: Request):
                     print(f"[{cam_id}] Subscriber task cancelled")
 
     arrow_service = arrow_registry.get(cam_id)
-    video_track = CameraVideoTrack(arrow_service)
+    person_service = person_registry.get(cam_id)
+    video_track = CameraVideoTrack(arrow_service, person_service)
     pc.addTrack(video_track)
 
     port = CAMERA_PORTS[cam_id]

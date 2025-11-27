@@ -1,5 +1,6 @@
-import time, cv2, numpy as np
+import time, cv2, numpy as np, os, datetime
 from collections import deque
+from config import BASE_DIR
 
 
 class ArrowService:
@@ -12,14 +13,14 @@ class ArrowService:
         self.target = None
         self.last_bbox = None
 
-        self.video_rect = None
         self.frame_size = None
+        self.last_frame = None  # 화살 위치 디버그용 추후 서비스 안정화되면 제거
 
-    def to_render_coords(self, x, y):
-        if self.video_rect is None or self.frame_size is None:
+    def to_render_coords(self, x, y, video_size):
+        if video_size is None or self.frame_size is None:
             return None
 
-        render_w, render_h = self.video_rect
+        render_w, render_h = video_size
         frame_w, frame_h = self.frame_size
 
         scale_x = render_w / frame_w
@@ -34,13 +35,13 @@ class ArrowService:
 
         return [float(rx), float(ry)]
 
-    def polygon_to_render(self):
-        if self.target is None or self.frame_size is None or self.video_rect is None:
+    def polygon_to_render(self, video_size):
+        if self.target is None or self.frame_size is None:
             return None
 
         render_poly = []
         for x, y in self.target:
-            p = self.to_render_coords(x, y)
+            p = self.to_render_coords(x, y, video_size)
             if p:
                 render_poly.append(p)
 
@@ -66,6 +67,14 @@ class ArrowService:
             x1, y1, x2, y2 = event["bbox"]
             self.last_bbox = (x1, y1, x2, y2)
 
+            # 화살 위치 디버그용 추후 서비스 안정화되면 제거
+            arrow_crop = None
+            if self.last_frame is not None:
+                try:
+                    arrow_crop = self.last_frame[y1:y2, x1:x2].copy()
+                except:
+                    pass
+
             self.tracking_buffer.append(
                 (
                     tip[0],
@@ -75,13 +84,90 @@ class ArrowService:
                     y1,
                     x2,
                     y2,
-                    None,
+                    arrow_crop,
                     event["conf"],
                 )
             )
             self.last_event_time = time.time()
         else:
             self.last_bbox = None
+
+    def visualize_buffer(self, hit_point):
+        if not self.tracking_buffer or self.last_frame is None:
+            return
+        print("그린다")
+        vis_frame = self.last_frame.copy()
+
+        for i, data in enumerate(self.tracking_buffer):
+            if len(data) == 9:  # crop 포함된 버전
+                x, y, t, x1, y1, x2, y2, arrow_crop, confidence = data
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+
+                if arrow_crop is not None:
+                    h, w = arrow_crop.shape[:2]
+                    try:
+                        vis_frame[y1 : y1 + h, x1 : x1 + w] = arrow_crop
+                    except:
+                        pass
+
+                # bbox 색상
+                alpha = (i + 1) / len(self.tracking_buffer)
+                color = (0, int(255 * alpha), int(255 * (1 - alpha)))
+
+                # bbox 테두리
+                cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(
+                    vis_frame,
+                    str(i),
+                    (x1, y1 - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    2,
+                )
+
+                cv2.putText(
+                    vis_frame,
+                    f"{confidence:.2f}",
+                    (x1, y2 + 15),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (255, 255, 0),
+                    2,
+                )
+                cv2.circle(vis_frame, (int(x), int(y)), 4, color, -1)
+
+        if hit_point is not None:
+            hit_x, hit_y = int(hit_point[0]), int(hit_point[1])
+            cv2.circle(vis_frame, (hit_x, hit_y), 15, (0, 0, 255), 3)
+            cv2.circle(vis_frame, (hit_x, hit_y), 5, (0, 0, 255), -1)
+            cv2.putText(
+                vis_frame,
+                "HIT",
+                (hit_x + 20, hit_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.0,
+                (0, 0, 255),
+                3,
+            )
+            cv2.putText(
+                vis_frame,
+                f"({hit_x}, {hit_y})",
+                (hit_x + 20, hit_y + 25),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 0, 255),
+                2,
+            )
+
+        now = datetime.datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H-%M-%S")
+        save_dir = os.path.join(BASE_DIR, date_str)
+        os.makedirs(save_dir, exist_ok=True)
+
+        save_path = os.path.join(save_dir, f"{time_str}.jpg")
+        cv2.imwrite(save_path, vis_frame)
 
     def is_idle(self):
         if not self.tracking_buffer or self.last_event_time is None:
@@ -160,15 +246,15 @@ class ArrowService:
 
                     if inside:
                         print(f"[HIT-변곡점] 과녁 안: {raw_hit}")
-                        return self.to_render_coords(x, y)
-                    else:
-                        for data in self.tracking_buffer:
-                            px, py = float(data[0]), float(data[1])
-                            if cv2.pointPolygonTest(self.target, [px, py], False) >= 0:
-                                print(
-                                    f"[HIT-보정] 버퍼에서 과녁 안 좌표 발견: ({px}, {py})"
-                                )
-                                return self.to_render_coords(px, py)
+                        return raw_hit
+
+                    for data in self.tracking_buffer:
+                        px, py = float(data[0]), float(data[1])
+                        if cv2.pointPolygonTest(self.target, [px, py], False) >= 0:
+                            print(
+                                f"[HIT-보정] 버퍼에서 과녁 안 좌표 발견: ({px}, {py})"
+                            )
+                            return [px, py]
 
                         closest_point = self._closest_point_on_polygon(
                             [x, y], self.target
@@ -193,11 +279,11 @@ class ArrowService:
                             print(
                                 f"[HIT-보정] 가장 가까운 테두리 안쪽: ({closest_x}, {closest_y})"
                             )
-                            return self.to_render_coords(closest_x, closest_y)
+                            return [closest_x, closest_y]
                         else:
-                            return self.to_render_coords(x, y)
+                            return [x, y]
                 else:
-                    return self.to_render_coords(x, y)
+                    return [x, y]
 
         # 변곡점 없는 경우 적중 X or 적중했지만 변곡점 감지 안되는 경우가 있다
         x, y = self.tracking_buffer[-1][0], self.tracking_buffer[-1][1]
@@ -205,19 +291,18 @@ class ArrowService:
 
         if self.target is None:
             print(f"[HIT] raw={raw_hit}")
-            return self.to_render_coords(x, y)
+            return raw_hit
 
         inside = cv2.pointPolygonTest(self.target, raw_hit, False) >= 0
 
         if inside:
             print(f"[HIT] 마지막 좌표 과녁 안")
-            return self.to_render_coords(x, y)
+            return raw_hit
 
         for data in self.tracking_buffer:
             px, py = float(data[0]), float(data[1])
             if cv2.pointPolygonTest(self.target, [px, py], False) >= 0:
                 print(f"[HIT] 버퍼에서 과녁 안 좌표 발견: ({px}, {py})")
-                return self.to_render_coords(px, py)
-
+                return [px, py]
         print(f"[HIT] 과녁 밖 좌표 그대로 반환")
-        return self.to_render_coords(x, y)
+        return raw_hit

@@ -5,35 +5,46 @@ from services.arrow.registry import arrow_registry
 
 router = APIRouter()
 
-connected_clients: dict[str, set[WebSocket]] = {}
+connected_clients: dict[str, dict[WebSocket, dict]] = {}
 
 
 async def broadcast(cam_id: str, event: dict):
-    clients = connected_clients.get(cam_id, set())
+    clients = connected_clients.get(cam_id, {})
     if not clients:
         return
 
-    results = await asyncio.gather(
-        *[ws.send_json(event) for ws in list(clients)], return_exceptions=True
-    )
+    if event.get("type") != "hit":
+        return
 
-    dead = [
-        ws
-        for ws, result in zip(list(clients), results)
-        if isinstance(result, Exception)
-    ]
+    arrow_service = arrow_registry.get(cam_id)
 
-    for ws in dead:
-        clients.discard(ws)
-        print(f"[WS:{cam_id}] Removed dead connection")
+    if not arrow_service:
+        return
+    raw_x, raw_y = event["tip"]
+
+    for ws, info in list(clients.items()):
+        video_size = info.get("video_size")
+
+        if video_size is None:
+            continue
+
+        render_tip = arrow_service.to_render_coords(raw_x, raw_y, video_size)
+
+        payload = {"type": "hit", "tip": render_tip}
+
+        try:
+            await ws.send_json(payload)
+        except Exception:
+            if ws in clients:
+                del clients[ws]
 
 
-async def send_polygon(ws: WebSocket, cam_id: str):
+async def send_polygon(ws: WebSocket, cam_id: str, video_size=None):
     arrow_service = arrow_registry.get(cam_id)
     if arrow_service is None:
         return
 
-    render_polygon = arrow_service.polygon_to_render()
+    render_polygon = arrow_service.polygon_to_render(video_size)
 
     if render_polygon is None:
 
@@ -52,8 +63,8 @@ async def hit_ws(ws: WebSocket, cam_id: str):
     await ws.accept()
 
     if cam_id not in connected_clients:
-        connected_clients[cam_id] = set()
-    connected_clients[cam_id].add(ws)
+        connected_clients[cam_id] = {}
+    connected_clients[cam_id][ws] = {"video_size": None}
 
     print(f"[WS:{cam_id}] Client connected (total: {len(connected_clients[cam_id])})")
 
@@ -66,16 +77,16 @@ async def hit_ws(ws: WebSocket, cam_id: str):
                 width = msg["width"]
                 height = msg["height"]
 
-                arrow_service = arrow_registry.get(cam_id)
-                if arrow_service:
-                    arrow_service.video_rect = (width, height)
+                if ws in connected_clients[cam_id]:
+                    connected_clients[cam_id][ws]["video_size"] = (width, height)
 
-                    await send_polygon(ws, cam_id)
-
+                await send_polygon(ws, cam_id, (width, height))
                 continue
 
     except WebSocketDisconnect:
-        connected_clients[cam_id].remove(ws)
+        if ws in connected_clients[cam_id]:
+            del connected_clients[cam_id][ws]
+
         print(
             f"[WS:{cam_id}] Client disconnected (remaining: {len(connected_clients[cam_id])})"
         )
