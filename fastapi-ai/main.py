@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from subscriber import start_subscriber_thread
-from config import ARROW_INFER_CONFIG, PERSON_INFER_CONFIG, ALLOW_ORIGINS
+from config import ARROW_INFER_CONFIG, PERSON_INFER_CONFIG, ALLOW_ORIGINS, LOG_DIR
 from services.arrow.registry import arrow_registry
 from services.person.registry import person_registry
 from routers import webrtc, ws
@@ -14,7 +14,7 @@ import time, threading, asyncio
 import logging.config, yaml
 import os
 
-os.makedirs("logs", exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
 
 try:
     with open("logging.yaml", "r", encoding="utf-8") as f:
@@ -22,7 +22,7 @@ try:
 
         today = datetime.now().strftime("%Y-%m-%d")
 
-        config["handlers"]["file_handler"]["filename"] = f"logs/{today}.log"
+        config["handlers"]["file_handler"]["filename"] = f"{LOG_DIR}/{today}.log"
         logging.config.dictConfig(config)
 except FileNotFoundError:
     logging.basicConfig(
